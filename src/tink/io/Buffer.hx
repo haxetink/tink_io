@@ -53,9 +53,16 @@ class Buffer {
 		this.raw = bytes.getData();
 	}
 	
+  /**
+   * Seals the buffer
+   */
 	public function seal()
 		this.writable = false;
 	
+  /**
+   * Consolidates the content of the buffer into a single Bytes blob.
+   * Does not affect the buffer.
+   */
 	public function content():Bytes {
 		var ret = Bytes.alloc(available);
 		if (zero < end) 
@@ -70,10 +77,10 @@ class Buffer {
 	public function toString() 
 		return '[Buffer $available/$size]';
 	
-	public inline function hasNext()
+	public inline function hasNext():Bool
 		return available > 0;
 		
-	public inline function next() {
+	public inline function next():Int {
 		var ret = Bytes.fastGet(raw, zero++);
 		available--;
 		if (zero >= bytes.length)
@@ -81,11 +88,18 @@ class Buffer {
 		return ret;
 	}
 	
-	public function addByte(byte:Int) {
-		if (!writable || available == size) return false;
+  /**
+   * Attempts adding a byte.
+   * 
+   * Returns EOF if the buffer is sealed.
+   * Returns NONE if the buffer is full.
+   */
+	public function addByte(byte:Int):Progress {
+		if (!writable) return Progress.EOF;
+    if (freeBytes == 0) return Progress.NONE;
 		bytes.set(end, byte);
 		available++;
-		return true;
+		return Progress.by(1);
 	}
 	
 	function safely(operation:String, f:Void->Progress):Outcome<Progress, Error>
@@ -106,13 +120,30 @@ class Buffer {
 			catch (e:Dynamic)
 				Failure(new Error(operation, e));
   
-		
+	
+  /**
+   * Writes to a destination with error handling.
+   * If the destination raises an exception, then the buffer's state remains entirely unaffected.
+   * The same cannot necessarily be said for the destination, i.e. parts of the content may have been successfully written, before the error occurred.
+   * 
+   * If the buffer handles an error, it is best to reset the destination to a known state, before attempting another write.
+   */
 	public function tryWritingTo(name:String, dest:Writable):Outcome<Progress, Error> 
 		return safely('Error writing to $name', writeTo.bind(dest));
-		
+	
+  /**
+   * Reads from a source with error handling. See tryWritingTo
+   */  
 	public function tryReadingFrom(name:String, source:Readable):Outcome<Progress, Error> 
 		return safely('Error readong from $name', readFrom.bind(source));			
 	
+  /**
+   * Writes contents of the buffer to the destination.
+   * If this buffer is readonly and is drained by the write, it is disposed and EOF is returned.
+   * If the buffer is empty, NONE is returned.
+   * 
+   * Use only if you know the destination not to produce exceptions.
+   */
 	public function writeTo(dest:Writable):Progress {
 		
 		if (available == 0) 
@@ -137,9 +168,25 @@ class Buffer {
 		zero = (zero + transfered) % bytes.length;
 		available -= transfered;
 		
+    if (!writable && available == 0)
+      dispose();
+    
 		return Progress.by(transfered);
 	}	
 	
+  public function clear() {
+    this.zero = 0;
+    this.available = 0;
+    this.writable = true;
+  }
+  
+  /**
+   * Reads from a source into the buffer.
+   * Returns EOF if the buffer is sealed.
+   * Returns NONE if the buffer is full.
+   * 
+   * Use only if you know the source not to produce exceptions.
+   */
 	public function readFrom(source:Readable):Progress {
 		if (!writable) return Progress.EOF;
 		if (available == size) return Progress.NONE;

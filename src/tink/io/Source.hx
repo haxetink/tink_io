@@ -3,14 +3,15 @@ package tink.io;
 import haxe.io.Bytes;
 import haxe.io.BytesData;
 import haxe.io.Input;
+import tink.io.Worker;
 
 using tink.CoreApi;
 
 @:forward
 abstract Source(SourceObject) from SourceObject to SourceObject {
   
-  static public function ofInput(name:String, input:Input)
-    return new StdSource(name, input);
+  static public function ofInput(name:String, input:Input, ?worker:Worker)
+    return new StdSource(name, input, worker);
     
   @:from static function fromBytes(b:Bytes):Source
     return tink.io.IdealSource.ofBytes(b);
@@ -37,23 +38,34 @@ class SourceBase implements SourceObject {
 }
 
 class StdSource implements SourceObject {
+  
   var name:String;
   var target:Input;
+  var worker:Worker;
   
-  public function new(name, target) {
+  public function new(name, target, ?worker) {
     this.name = name;
     this.target = target;
+    this.worker = worker;
   }
 
   public inline function append(other:Source):Source 
     return CompoundSource.of(this, other);
     
   public function read(into:Buffer):Surprise<Progress, Error>
-    return Future.sync(into.tryReadingFrom(name, target));
+    return worker.work(function () return into.tryReadingFrom(name, target));
   
   public function close() {
-    target.close();
-    return Future.sync(Success(Noise));
+    return 
+      worker.work(function () 
+        return Error.catchExceptions(
+          function () {
+            target.close();
+            return Noise;
+          },
+          Error.reporter('Failed to close $name')
+        )
+      );
   }
 
 }

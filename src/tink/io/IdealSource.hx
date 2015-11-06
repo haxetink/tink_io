@@ -13,11 +13,77 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
     
   @:from static function fromBytes(b:Bytes)
     return ofBytes(b);
+    
+  
+  static public function create():SyntheticSource
+    return new SyntheticSource();
+    
 }
 
 interface IdealSourceObject extends SourceObject {
   function readSafely(into:Buffer):Future<Progress>;
   function closeSafely():Future<Noise>;
+}
+
+class SyntheticSource extends IdealSourceBase {
+  
+  var buf:Array<BytesInput>;
+  var queue:Array<FutureTrigger<Noise>>;
+  
+  public var closed(get, never):Bool;  
+    inline function get_closed()
+      return buf == null;
+  
+  public function new() {
+    buf = [];
+    queue = [];
+  }
+  
+  function doRead(into:Buffer):Progress {
+    if (closed) return Progress.EOF;
+    var src = buf[0];
+    var ret = into.readFrom(src);
+    if (src.position == src.length)
+      buf.pop();
+    return ret;
+  }
+  
+  override public function readSafely(into:Buffer):Future<Progress> {
+    if (closed)
+      return Future.sync(Progress.EOF);
+      
+    if (buf.length > 0) 
+      return Future.sync(doRead(into));
+      
+    var trigger = Future.trigger();
+    
+    queue.push(trigger);
+    
+    return trigger.asFuture().map(function (_) return doRead(into));
+  }
+  
+  public function write(bytes:Bytes):Bool {
+    if (closed)
+      return false;
+      
+    buf.push(new BytesInput(bytes));
+    if (queue.length > 0 && buf.length > 0)
+      queue.shift().trigger(Noise);
+      
+   return true;
+  }
+  
+  override public function closeSafely():Future<Noise> {
+    if (!closed) {
+      buf = null;
+      
+      for (q in queue)
+        q.trigger(Noise);
+        
+      queue = null;
+    }
+    return Future.sync(Noise);
+  }
 }
 
 class IdealSourceBase extends SourceBase implements IdealSourceObject {

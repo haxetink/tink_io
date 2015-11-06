@@ -13,9 +13,11 @@ abstract Progress(Int) to Int {
 			
 	inline function new(v) this = v;
 	
-	
 	static public inline function by(amount:Int) 
 		return new Progress(amount);
+    
+  @:to inline function toBool():Bool
+    return this > 0;
 	
 	static public inline var EOF:Progress = new Progress(-1);
 	static public inline var NONE:Progress = new Progress(0);

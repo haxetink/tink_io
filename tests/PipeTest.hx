@@ -1,14 +1,10 @@
 package;
-import tink.io.Sink;
 
-import haxe.io.Bytes;
-import haxe.io.BytesBuffer;
 import haxe.unit.TestCase;
-import tink.io.Buffer;
-import tink.io.Sink.SinkObject;
+import tink.io.*;
+import haxe.io.*;
+import tink.io.Sink;
 import tink.io.Source;
-import tink.io.Pipe;
-import tink.io.Progress;
 
 using tink.CoreApi;
 
