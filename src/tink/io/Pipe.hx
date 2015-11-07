@@ -75,6 +75,7 @@ abstract PipeResult(Pair<Int, PipeResultStatus>) {
      
   @:to public function toString() 
     return '[Piped $bytesWritten bytes - $status]';
+    
 }
 
 enum PipeResultStatus {

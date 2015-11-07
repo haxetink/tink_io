@@ -2,23 +2,41 @@ package tink.io;
 
 using tink.CoreApi;
 
-abstract Worker(WorkerObject) {
+abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   public inline function work<A>(task:Lazy<A>):Future<A> {
     if (this == null)
       this = DefaultWorker.INSTANCE;
     return this.work(task);
   }
+  
+  #if tink_runloop
+  @:from static function ofRunLoopWorker(worker):Worker
+    return new RunLoopWorker(worker);
+  #end
 }
 
 private class DefaultWorker implements WorkerObject {
   
   function new() { }
   
-  public inline function work<A>(task:Lazy<A>):Future<A>
+  public function work<A>(task:Lazy<A>):Future<A>
     return Future.sync(task.get());
     
-  static public var INSTANCE(default, null):DefaultWorker;
+  static public var INSTANCE(default, null):Worker = new DefaultWorker();
 }
+
+#if tink_runloop
+private class RunLoopWorker implements WorkerObject {
+  var actualWorker:tink.runloop.Worker;
+  
+  public function new(actualWorker)
+    this.actualWorker = actualWorker;
+  
+  public function work<A>(task:Lazy<A>):Future<A>
+    return 
+      actualWorker.owner.delegate(task, actualWorker);
+}
+#end
 
 interface WorkerObject {
   function work<A>(task:Lazy<A>):Future<A>;

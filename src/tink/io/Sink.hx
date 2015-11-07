@@ -24,7 +24,7 @@ class StdSink implements SinkObject {
     this.worker = worker;
   }
     
-  public function write(from:Buffer):Surprise<Progress, Error>
+  public function write(from:Buffer):Surprise<Progress, Error> 
     return worker.work(function () return from.tryWritingTo(name, target));
   
   public function close() {

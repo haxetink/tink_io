@@ -30,6 +30,8 @@ class SyntheticSource extends IdealSourceBase {
   var buf:Array<BytesInput>;
   var queue:Array<FutureTrigger<Noise>>;
   
+  public var writable(default, null):Bool = true;
+  
   public var closed(get, never):Bool;  
     inline function get_closed()
       return buf == null;
@@ -40,19 +42,25 @@ class SyntheticSource extends IdealSourceBase {
   }
   
   function doRead(into:Buffer):Progress {
-    if (closed) return Progress.EOF;
+    if (closed || buf.length == 0) return Progress.EOF;
     var src = buf[0];
     var ret = into.readFrom(src);
     if (src.position == src.length)
-      buf.pop();
+      buf.shift();
     return ret;
+  }
+  
+  public function end() {
+    writable = false;
+    if (queue.length > 0)
+      closeSafely();
   }
   
   override public function readSafely(into:Buffer):Future<Progress> {
     if (closed)
       return Future.sync(Progress.EOF);
       
-    if (buf.length > 0) 
+    if (buf.length > 0 || !writable) 
       return Future.sync(doRead(into));
       
     var trigger = Future.trigger();
@@ -63,14 +71,14 @@ class SyntheticSource extends IdealSourceBase {
   }
   
   public function write(bytes:Bytes):Bool {
-    if (closed)
+    if (closed || !writable)
       return false;
       
     buf.push(new BytesInput(bytes));
-    if (queue.length > 0 && buf.length > 0)
+    if (queue.length > 0 && (buf.length > 0 || !writable))
       queue.shift().trigger(Noise);
       
-   return true;
+    return true;
   }
   
   override public function closeSafely():Future<Noise> {
