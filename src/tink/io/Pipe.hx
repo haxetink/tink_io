@@ -43,7 +43,7 @@ class Pipe {
 			case Success(_.isEof => true):
         yield(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
 			case Success(v):
-				total += v.bytes;
+        total += v.bytes;
 				if (buffer.available == 0)
 					read();
 				else 

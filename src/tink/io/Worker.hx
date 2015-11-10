@@ -22,9 +22,9 @@ private class DefaultWorker implements WorkerObject {
   public function work<A>(task:Lazy<A>):Future<A>
     return Future.sync(task.get());
     
-  static public var INSTANCE(default, null):Worker = 
+  static public var INSTANCE(default, null):Lazy<Worker> = 
     #if tink_runloop
-      new RunLoopWorker(null);
+      function () return new RunLoopWorker(tink.RunLoop.current.createSlave()); 
     #else
       new DefaultWorker();
     #end
@@ -32,18 +32,15 @@ private class DefaultWorker implements WorkerObject {
 
 #if tink_runloop
 private class RunLoopWorker implements WorkerObject {
+  
   var actualWorker:tink.runloop.Worker;
   
   public function new(actualWorker)
     this.actualWorker = actualWorker;
   
   public function work<A>(task:Lazy<A>):Future<A> {
-    var worker = 
-      if (actualWorker != null) actualWorker;
-      else tink.RunLoop.current;
-      
     return 
-      worker.owner.delegate(task, worker);
+      actualWorker.owner.delegate(task, actualWorker);
   }
 }
 #end

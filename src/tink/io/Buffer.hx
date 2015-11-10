@@ -160,15 +160,16 @@ class Buffer {
 				bytes.length - zero;
 			else
 				available;
-				
-		var transfered = dest.writeBytes(bytes, zero, toWrite);
 		
+		var transfered = dest.writeBytes(bytes, zero, toWrite);
 		//if (zero + transfered == bytes.length)
 			//transfered += dest.writeBytes(bytes, 0, available - toWrite); 
 			
-		zero = (zero + transfered) % bytes.length;
-		available -= transfered;
-		
+    if (transfered > 0) {
+      zero = (zero + transfered) % bytes.length;
+      available -= transfered;
+		}
+    
     if (!writable && available == 0)
       dispose();
     
@@ -202,8 +203,11 @@ class Buffer {
 		
 		//if (end + transfered == size)
 			//transfered += source.readBytes(bytes, 0, zero);
-			
-		available += transfered;
+		
+    if (transfered > 0) {
+      available += transfered;
+    }
+    
 		return Progress.by(transfered);
 	}
 	static public var ZERO_BYTES(default, null) = Bytes.alloc(0);

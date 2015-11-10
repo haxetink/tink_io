@@ -33,7 +33,7 @@ class NodeSink extends AsyncSink {
         var bytes = from.content();
         
         var progress = from.writeTo( { writeBytes: function (b, pos, len) return len } );
-        var native = untyped global.Buffer(bytes.getData());
+        var native = untyped global.Buffer(bytes.getData());//TODO: find a nicer way to do this
         return 
           if (target.write(native)) 
             Future.sync(Success(progress));
@@ -46,7 +46,6 @@ class NodeSink extends AsyncSink {
             );
       },
       function () {
-        //if (target.
         target.end();
         return Future.sync(Success(Noise));
       }
@@ -54,6 +53,7 @@ class NodeSink extends AsyncSink {
   }
   
   function next(handlers:Dynamic<Dynamic->Void>) {
+    
     var handlers:haxe.DynamicAccess<Dynamic->Void> = handlers;
     
     function removeAll() {
@@ -108,10 +108,6 @@ class AsyncSink implements SinkObject {
     return closing;
   }
 }
-
-//class NodeSink implements SinkObject {
-  //
-//}
 
 class FutureSink implements SinkObject {
   var f:Surprise<Sink, Error>;

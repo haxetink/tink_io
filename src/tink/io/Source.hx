@@ -5,7 +5,6 @@ import tink.io.Buffer;
 import tink.io.IdealSource;
 import tink.io.Pipe;
 import tink.io.Sink;
-import tink.io.Source.NodeSource;
 import tink.io.Worker;
 
 using tink.CoreApi;
@@ -33,6 +32,9 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
   @:from static function fromBytes(b:Bytes):Source
     return tink.io.IdealSource.ofBytes(b);
     
+  @:from static function fromString(s:String):Source
+    return fromBytes(Bytes.ofString(s));
+    
 }
 
 interface SourceObject {
@@ -58,10 +60,7 @@ class NodeSource extends AsyncSource {
       untyped target.close //Not documented, but very much available https://github.com/nodejs/node-v0.x-archive/blob/cfcb1de130867197cbc9c6012b7e84e08e53d032/lib/fs.js#L1597-L1620
     );
   }
-  //override public function pipeTo(dest:Sink):Future<PipeResult> {
-    //if (Std.is(dest, NodeSource))
-      //target.pipe(@:privateAccess (cast dest : NodeSource).target);
-  //}
+  //TODO: use native piping
 }
 #end
 
@@ -136,6 +135,12 @@ class FutureSource extends SourceBase {
   override public function close():Surprise<Noise, Error>
     return s >> function (s:Source) return s.close();
   
+  public function toString() {
+    var ret = 'PENDING';
+    s.handle(function (o) ret = Std.string(o));
+    return '[FutureSource $ret]';
+  }
+    
 }
 
 class FailedSource extends SourceBase {
@@ -179,6 +184,9 @@ class StdSource extends SourceBase {
         )
       );
   }
+  
+  public function toString()
+    return name;
 
 }
 
@@ -223,7 +231,7 @@ class CompoundSource extends SourceBase {
 				parts[0].read(into).flatMap(
 					function (o) return switch o {
 						case Success(_.isEof => true):
-							parts.shift().close();
+              parts.shift().close();
 							read(into);//Technically a huge array of empty synchronous sources could cause a stack overflow, but let's be optimistic for once!
 						default:
 							Future.sync(o);
@@ -236,7 +244,7 @@ class CompoundSource extends SourceBase {
       switch [Std.instance(a, CompoundSource), Std.instance(b, CompoundSource)] {
         case [null, null]: 
           [a, b];
-        case [null, { parts: p } ]: 
+        case [null, { parts: p }]: 
           [a].concat(p);  
         case [{ parts: p }, null]: 
           p.concat([b]);

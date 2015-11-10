@@ -118,19 +118,22 @@ class ByteSource extends IdealSourceBase {
     this.pos = offset;
   }
   
-  function readBytes(into:Bytes, offset:Int, len:Int):Int 
-    return
-      if (len <= 0) 
+  function readBytes(into:Bytes, offset:Int, len:Int):Int {
+    var ret =
+      if (pos >= data.length)
+        Progress.EOF;
+      else if (len <= 0) 
         Progress.NONE;
       else if (pos + len > data.length) 
         readBytes(into, offset, data.length - pos);
-      else if (len == 0)
-        Progress.EOF;
       else {
         into.blit(offset, data, pos, len);
         pos += len;
         len;
       }
+    //trace(ret);  
+    return ret;
+  }
   
   override public function readSafely(into:Buffer):Future<Progress>
     return Future.sync(into.readFrom(this));
