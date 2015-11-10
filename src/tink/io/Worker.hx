@@ -26,7 +26,7 @@ private class DefaultWorker implements WorkerObject {
     #if tink_runloop
       function () return new RunLoopWorker(tink.RunLoop.current.createSlave()); 
     #else
-      new DefaultWorker();
+      (new DefaultWorker() : Worker);
     #end
 }
 

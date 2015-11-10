@@ -135,6 +135,9 @@ class ByteSource extends IdealSourceBase {
     return ret;
   }
   
+  public function toString()
+    return '[Byte Source]';
+  
   override public function readSafely(into:Buffer):Future<Progress>
     return Future.sync(into.readFrom(this));
   

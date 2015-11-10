@@ -30,7 +30,7 @@ class Pipe {
 	function read()
 		source.read(buffer).handle(function (o) switch o {
 			case Success(_.isEof => true):
-				buffer.seal();
+        buffer.seal();
 				flush();
 			case Success(v):
         flush();

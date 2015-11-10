@@ -26,16 +26,17 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
 #if nodejs
 class NodeSink extends AsyncSink {
   var target:js.node.stream.Writable.IWritable;
+  var name:String;
   public function new(target, name) {
     this.target = target;
+    this.name = name;
     super(
       function (from:Buffer) { 
         var bytes = from.content();
-        
         var progress = from.writeTo( { writeBytes: function (b, pos, len) return len } );
         var native = untyped global.Buffer(bytes.getData());//TODO: find a nicer way to do this
         return 
-          if (target.write(native)) 
+          if (progress.isEof || target.write(native)) 
             Future.sync(Success(progress));
           else
             Future.async(function (cb) 
@@ -51,6 +52,9 @@ class NodeSink extends AsyncSink {
       }
     );
   }
+  
+  public function toString()
+    return name;
   
   function next(handlers:Dynamic<Dynamic->Void>) {
     
@@ -126,6 +130,11 @@ class FutureSink implements SinkObject {
   public function close() 
     return cause(f >> function (s:Sink) return s.close());
   
+  public function toString() {
+    var ret = 'PENDING';
+    f.handle(function (o) ret = Std.string(o));
+    return '[FutureSink $ret]';
+  }  
 }
 
 class StdSink implements SinkObject {
@@ -154,6 +163,10 @@ class StdSink implements SinkObject {
           Error.reporter('Failed to close $name')
         )
       );
+  }
+  
+  public function toString() {
+    return name;
   }
   
 }

@@ -47,66 +47,68 @@ interface SourceObject {
 #if nodejs
 class NodeSource extends AsyncSource {
   var target:js.node.stream.Readable.IReadable;
+  var name:String;
   public function new(target, name) {
     this.target = target;
+    this.name = name;
     super(
-      function (addChunk, end) { 
+      function (onChunk, onEnd) { 
         
-        target.on('data', function handleChunk(blob:Dynamic) addChunk(Bytes.ofData(blob)));
-        target.on('end', function handleEnd() end(Success(Noise)));
-        target.on('error', function handleError(e) end(Failure(new Error('Error $e on $name'))));
+        target.on('data', function handleChunk(blob:Dynamic) onChunk.trigger(Bytes.ofData(blob)));
+        target.on('end', function handleEnd() { onEnd.trigger(Success(Noise)); });
+        target.on('error', function handleError(e) onEnd.trigger(Failure(new Error('Error $e on $name'))));
         
       }, 
-      untyped target.close //Not documented, but very much available https://github.com/nodejs/node-v0.x-archive/blob/cfcb1de130867197cbc9c6012b7e84e08e53d032/lib/fs.js#L1597-L1620
+      closeTarget
     );
   }
+  
+  function closeTarget() {
+    try {
+      untyped target.close(); //Not documented, but seems available - except when it isn't ... hence the pokemon clause \o/ https://github.com/nodejs/node-v0.x-archive/blob/cfcb1de130867197cbc9c6012b7e84e08e53d032/lib/fs.js#L1597-L1620
+    }
+    catch (e:Dynamic) {}
+  }
+  
+  public function toString() 
+    return this.name;
   //TODO: use native piping
 }
 #end
 
 class AsyncSource extends SourceBase {
   var data:SyntheticIdealSource;
-  var end:Outcome<Noise, Error>;
+  var end:Surprise<Noise, Error>;
+  var onError:Surprise<Progress, Error>;
   var _close:Void->Void;
   
-  public function new(f:(Bytes->Void)->(Outcome<Noise, Error>->Void)->Void, close) {
+  public function new(f:SignalTrigger<Bytes>->FutureTrigger<Outcome<Noise, Error>>->Void, close) {
     this.data = IdealSource.create();
     _close = close;
-    f(addChunk, finish);
+    var onData = Signal.trigger(),
+        onEnd = Future.trigger();
+        
+    onData.asSignal().handle(data.write);
+    end = onEnd.asFuture();
+    end.handle(function (e) {
+      data.close();
+    });
+    onError = Future.async(function (cb) end.handle(function (o) switch o {
+      case Failure(e): cb(Failure(e));
+      default:
+    }));
+    f(onData, onEnd);
   }
     
   override public function read(into:Buffer):Surprise<Progress, Error>
     return 
-      data.readSafely(into).map( 
-        function (p:Progress) 
-          return
-            if (p.isEof)
-              switch end {
-                case null:
-                  end = Success(Noise);
-                  Success(p);
-                case Success(_): Success(p);
-                case Failure(e): Failure(e);
-              }
-            else
-              Success(p)
-      );
+      data.read(into) || onError;
   
   override public function close():Surprise<Noise, Error> {
-    if (end != null)
-      this.end = Success(Noise);
     _close();  
     return data.close();
   }
-  
-  function addChunk(b:Bytes)
-    data.write(b);
-  
-  function finish(with) {
-    if (end != null)
-      this.end = with;
-    data.end();
-  }
+
 }
 
 class SourceBase implements SourceObject {
