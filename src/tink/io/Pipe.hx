@@ -15,7 +15,7 @@ class Pipe {
   
   function new(source, dest, ?bytes) {
     if (bytes == null)
-      bytes = Bytes.alloc(0x8000);
+      bytes = Bytes.alloc(0x40000);
 		this.source = source;
 		this.dest = dest;
 		
@@ -33,11 +33,11 @@ class Pipe {
 				buffer.seal();
 				flush();
 			case Success(v):
-				flush();
+        flush();
 			case Failure(e):
         yield(SourceFailed(e));
 		});
-			
+    
 	function flush() {
 		dest.write(buffer).handle(function (o) switch o {
 			case Success(_.isEof => true):
@@ -53,6 +53,8 @@ class Pipe {
         yield(SinkFailed(f, buffer));
 		});
 	}	
+  
+  static var queue = [];
   
   static public function make(from:Source, to:Sink, ?bytes):Future<PipeResult> {
 		var p = new Pipe(from, to, bytes);

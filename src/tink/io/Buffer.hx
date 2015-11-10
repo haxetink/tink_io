@@ -65,7 +65,8 @@ class Buffer {
    */
 	public function content():Bytes {
 		var ret = Bytes.alloc(available);
-		if (zero < end) 
+    
+		if (zero <= end) 
 			ret.blit(0, bytes, zero, available);
 		else {
 			ret.blit(0, bytes, zero, bytes.length - zero);
@@ -117,8 +118,8 @@ class Buffer {
         Success(Progress.EOF)
 			catch (e:Error) 
 				Failure(e)
-			catch (e:Dynamic)
-				Failure(new Error(operation, e));
+			catch (e:Dynamic) 
+        Failure(new Error('$operation due to $e', e));
   
 	
   /**
@@ -129,13 +130,13 @@ class Buffer {
    * If the buffer handles an error, it is best to reset the destination to a known state, before attempting another write.
    */
 	public function tryWritingTo(name:String, dest:Writable):Outcome<Progress, Error> 
-		return safely('Error writing to $name', writeTo.bind(dest));
+		return safely('Failed writing to $name', writeTo.bind(dest));
 	
   /**
    * Reads from a source with error handling. See tryWritingTo
    */  
 	public function tryReadingFrom(name:String, source:Readable):Outcome<Progress, Error> 
-		return safely('Error readong from $name', readFrom.bind(source));			
+		return safely('Failed reading from $name', readFrom.bind(source));			
 	
   /**
    * Writes contents of the buffer to the destination.

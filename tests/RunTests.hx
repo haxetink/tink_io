@@ -11,12 +11,12 @@ using tink.CoreApi;
 class RunTests {
 
   static function main() {
-    //var t = new TestRunner();
-    //t.add(new BufferTest());
-    //t.add(new PipeTest());
+    var t = new TestRunner();
+    t.add(new BufferTest());
+    t.add(new PipeTest());
     //t.add(new TestInRunLoop());
-    //t.run();
-    new TestInRunLoop().test();
+    t.run();
+    //new TestInRunLoop().test();
   }
   
 }

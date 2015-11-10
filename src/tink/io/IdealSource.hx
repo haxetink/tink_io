@@ -15,8 +15,8 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
     return ofBytes(b);
     
   
-  static public function create():SyntheticSource
-    return new SyntheticSource();
+  static public function create():SyntheticIdealSource
+    return new SyntheticIdealSource();
     
 }
 
@@ -25,7 +25,7 @@ interface IdealSourceObject extends SourceObject {
   function closeSafely():Future<Noise>;
 }
 
-class SyntheticSource extends IdealSourceBase {
+class SyntheticIdealSource extends IdealSourceBase {
   
   var buf:Array<BytesInput>;
   var queue:Array<FutureTrigger<Noise>>;

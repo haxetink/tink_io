@@ -5,6 +5,7 @@ import tink.io.*;
 import haxe.io.*;
 import tink.io.Sink;
 import tink.io.Source;
+import tink.io.Pipe;
 
 using tink.CoreApi;
 
@@ -65,7 +66,8 @@ class FakeSource implements SourceObject {
   var data:Bytes;
   var pos = 0;
   var error:Dynamic;
-  
+  public function pipeTo(dest:Sink):Future<PipeResult>
+    return Pipe.make(this, dest);
   public function new(data, ?error) {
     this.data = data;
     this.error = error;
