@@ -2,6 +2,7 @@ package tink.io;
 
 import haxe.io.*;
 import tink.io.*;
+import tink.io.Pipe.PipeResult;
 import tink.io.Source;
 
 using tink.CoreApi;
@@ -138,6 +139,28 @@ class ByteSource extends IdealSourceBase {
   public function toString()
     return '[Byte Source]';
   
+  
+  override public function pipeTo(dest:Sink):Future<PipeResult> {
+    return 
+      //if (Std.is(dest, NodeSink)) {
+        //var dest:NodeSink = cast dest;
+        //@:privateAccess {
+          //dest.target.
+        //}
+      //}
+      //else 
+      {
+        @:privateAccess {
+          var pipe = new Pipe(this, dest, data);
+          pipe.buffer.seal();
+          pipe.buffer.available = data.length;
+          pipe.flush();
+          pipe.result;
+        }
+      }
+  }
+  
+    
   override public function readSafely(into:Buffer):Future<Progress>
     return Future.sync(into.readFrom(this));
   

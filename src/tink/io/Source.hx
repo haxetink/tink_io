@@ -45,6 +45,63 @@ interface SourceObject {
 }
 
 #if nodejs
+class NodeSource extends SourceBase {
+  
+  var target:js.node.stream.Readable.IReadable;
+  var name:String;
+  var end:Surprise<Progress, Error>;
+  
+  var rest:Bytes;
+  var pos:Int;
+  
+  public function new(target, name) {
+    
+    this.target = target;
+    this.name = name;
+    
+    end = Future.async(function (cb) {
+      target.once('end', function () cb(Success(Progress.EOF)));
+      target.once('error', function (e) cb(Failure(Error.reporter('Error while reading from $name')(e))));
+    });
+    
+  }
+  
+  function readBytes(into:Bytes, offset:Int, length:Int) {
+    
+    if (length > rest.length - pos)
+      length = rest.length - pos;
+      
+    into.blit(offset, rest, pos, length);
+    
+    pos += length;
+    
+    if (pos == rest.length)
+      rest = null;
+    
+    return length;
+  }
+  
+  override public function read(into:Buffer):Surprise<Progress, Error> {
+    if (rest == null) {
+      var chunk = target.read();
+      if (chunk == null)
+        return end || Future.async(function (cb) 
+          target.once('readable', function () cb(Noise))
+        ).flatMap(function (_) return read(into));
+        
+      rest = Bytes.ofData(cast chunk);
+      pos = 0;
+    }
+    
+    return Future.sync(into.tryReadingFrom(name, this));
+  }
+  
+  override public function close():Surprise<Noise, Error> {
+    return Future.sync(Success(Noise));
+  }
+}
+#end
+#if nodejsold
 class NodeSource extends AsyncSource {
   var target:js.node.stream.Readable.IReadable;
   var name:String;
@@ -72,7 +129,23 @@ class NodeSource extends AsyncSource {
   
   public function toString() 
     return this.name;
-  //TODO: use native piping
+  
+  override public function pipeTo(dest:Sink):Future<PipeResult> {
+    return 
+      if (Std.is(dest, NodeSink)) {
+        var dest = (cast dest : NodeSink);
+        var writable = @:privateAccess dest.target;
+        
+        target.pipe(writable, { end: false } );
+        
+        return Future.async(function (cb) {
+          @:privateAccess dest.next({
+            unpipe: function (s) if (s == target) cb(new PipeResult(-1, AllWritten)),
+          });
+        });
+      }
+      else super.pipeTo(dest);
+  }
 }
 #end
 

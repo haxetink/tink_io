@@ -15,13 +15,13 @@ class Pipe {
   
   function new(source, dest, ?bytes) {
     if (bytes == null)
-      bytes = Bytes.alloc(0x40000);
+      bytes = Bytes.alloc(0x20000);
 		this.source = source;
 		this.dest = dest;
 		
 		this.buffer = new Buffer(bytes);
 		this.result = Future.trigger();
-		read();
+		
   }
   
   function yield(s:PipeResultStatus)
@@ -58,6 +58,7 @@ class Pipe {
   
   static public function make(from:Source, to:Sink, ?bytes):Future<PipeResult> {
 		var p = new Pipe(from, to, bytes);
+    p.read();
 		return p.result.asFuture();    
   }
 }
