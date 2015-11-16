@@ -15,18 +15,14 @@ enum ParseStep<Result, State> {
 	Failed(e:Error);
 	Done(r:Result);
 	Progressed;
-	Transition(next:State);
 }
 
-class ByteWiseParser<Result, State> implements StreamParser<Result> {
+class ByteWiseParser<Result> implements StreamParser<Result> {
 	
   var resume:Outcome<Option<Result>, Error>;
-	var state:State;
 	
-	public function new(state) {
-		this.state = state;
+	public function new() 
     resume = Success(None);
-  }
 	
 	function read(c:Int):ParseStep<Result, State>
 		return throw 'not implemented';
@@ -44,17 +40,14 @@ class ByteWiseParser<Result, State> implements StreamParser<Result> {
 	
 	public function progress(buffer:Buffer):Outcome<Option<Result>, Error> {
 		
-		for (c in buffer) {
+		for (c in buffer) 
 			switch read(c) {
 				case Progressed:
 				case Failed(e):
 					return Failure(e);
 				case Done(r):
 					return Success(Some(r));
-				case Transition(next):
-					this.state = next;				
 			}
-		}	
     
 		return resume;
 	}
