@@ -10,11 +10,17 @@ using tink.CoreApi;
 @:forward
 abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObject to Source {
   static public inline function ofBytes(b:Bytes, ?offset:Int = 0):IdealSource 
-    return new ByteSource(b, offset);
+    return 
+      if (b == null) Empty.instance;
+      else new ByteSource(b, offset);
     
   @:from static function fromBytes(b:Bytes)
     return ofBytes(b);
     
+  @:from static function fromString(s:String)
+    return 
+      if (s == null) Empty.instance;
+      else ofBytes(Bytes.ofString(s));
   
   static public function create():SyntheticIdealSource
     return new SyntheticIdealSource();
@@ -24,6 +30,17 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
 interface IdealSourceObject extends SourceObject {
   function readSafely(into:Buffer):Future<Progress>;
   function closeSafely():Future<Noise>;
+}
+
+class Empty extends IdealSourceBase {
+  function new() {}
+  override public function readSafely(into:Buffer):Future<Progress> 
+    return Future.sync(Progress.EOF);
+  
+  override public function closeSafely()
+    return Future.sync(Noise);
+  
+  static public var instance(default, null):Empty = new Empty();
 }
 
 class SyntheticIdealSource extends IdealSourceBase {
@@ -137,8 +154,7 @@ class ByteSource extends IdealSourceBase {
   }
   
   public function toString()
-    return '[Byte Source]';
-  
+    return '[Byte Source $pos/${data.length}]';
   
   override public function pipeTo(dest:Sink):Future<PipeResult> {
     return 
