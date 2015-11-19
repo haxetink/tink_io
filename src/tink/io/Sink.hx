@@ -182,3 +182,58 @@ interface SinkObject {
 	function write(from:Buffer):Surprise<Progress, Error>;
 	function close():Surprise<Noise, Error>;  
 }
+
+class ParserSink<T> implements SinkObject {
+  
+  var parser:StreamParser<T>;
+  var state:Outcome<Progress, Error>;
+  var onResult:T->Future<Bool>;
+  var wait:Future<Bool>;
+  
+  public function new(parser, onResult) {
+    this.parser = parser;
+    this.onResult = onResult;
+    this.wait = Future.sync(true);
+  }
+  
+  function doClose()
+    if (state == null)
+      state = Success(Progress.EOF);
+  
+  public function write(from:Buffer):Surprise<Progress, Error>
+    return
+      if (this.state != null)
+        Future.sync(this.state);
+      else
+        this.wait.map(function (resume) 
+          return
+            if (!resume) {
+              doClose();
+              state;
+            }
+            else {
+              
+              var last = from.available;
+              
+              switch parser.progress(from) {
+                case Success(d):
+                  
+                  switch d {
+                    case Some(v):
+                      this.wait = onResult(v);
+                    case None:
+                  }
+                  
+                  Success(Progress.by(last - from.available));
+                  
+                case Failure(f):
+                  Failure(f);
+              }
+            }
+        );
+  
+	public function close():Surprise<Noise, Error> {
+    doClose();
+    return Future.sync(Success(Noise));
+  }
+}

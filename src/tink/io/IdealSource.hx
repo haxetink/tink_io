@@ -136,8 +136,8 @@ class ByteSource extends IdealSourceBase {
     this.pos = offset;
   }
   
-  function readBytes(into:Bytes, offset:Int, len:Int):Int {
-    var ret =
+  function readBytes(into:Bytes, offset:Int, len:Int):Int
+    return
       if (pos >= data.length)
         Progress.EOF;
       else if (len <= 0) 
@@ -149,27 +149,27 @@ class ByteSource extends IdealSourceBase {
         pos += len;
         len;
       }
-    //trace(ret);  
-    return ret;
-  }
   
   public function toString()
     return '[Byte Source $pos/${data.length}]';
   
   override public function pipeTo(dest:Sink):Future<PipeResult> {
     return 
+      if (true)
+        super.pipeTo(dest);
       //if (Std.is(dest, NodeSink)) {
         //var dest:NodeSink = cast dest;
         //@:privateAccess {
           //dest.target.
         //}
       //}
-      //else 
+      else 
       {
         @:privateAccess {
           var pipe = new Pipe(this, dest, data);
           pipe.buffer.seal();
           pipe.buffer.available = data.length;
+          this.pos = data.length;
           pipe.flush();
           pipe.result;
         }

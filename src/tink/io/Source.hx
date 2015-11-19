@@ -38,10 +38,13 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
 }
 
 interface SourceObject {
+  function prepend(other:Source):Source;
   function append(other:Source):Source;
   function read(into:Buffer):Surprise<Progress, Error>;
   function pipeTo(sink:Sink):Future<PipeResult>;
   function close():Surprise<Noise, Error>;
+  function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
+  function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
 }
 
 #if nodejs
@@ -185,7 +188,8 @@ class AsyncSource extends SourceBase {
 }
 
 class SourceBase implements SourceObject {
-  
+  public function prepend(other:Source):Source
+    return CompoundSource.of(other, this);
   public function append(other:Source):Source
     return CompoundSource.of(this, other);
     
@@ -197,6 +201,30 @@ class SourceBase implements SourceObject {
   
   public function pipeTo(dest:Sink):Future<PipeResult>
     return Pipe.make(this, dest);
+    
+  public function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error> {
+    var ret = null;
+    return 
+      parseWhile(parser, function (x) { ret = x; return Future.sync(false); } ) 
+      >> function (s:Source) return { data: ret, rest: s };
+  }      
+    
+  public function parseWhile<T>(parser:StreamParser<T>, cond):Surprise<Source, Error>
+    return Future.async(function (cb:Outcome<Source, Error>->Void) {
+      var ret = null;
+      var sink = new ParserSink(parser, cond);
+      
+      pipeTo(sink).handle(function (res) switch res.status {
+        case AllWritten:
+          cb(Success((Empty.instance : Source)));
+        case SinkEnded(rest):
+          cb(Success((rest.content() : Source).append(this)));
+        case SinkFailed(e, _):
+          cb(Failure(e));
+        case SourceFailed(e):
+          cb(Failure(e));
+      });
+    });    
 }
 
 class FutureSource extends SourceBase {
@@ -314,7 +342,7 @@ class CompoundSource extends SourceBase {
 				);  
     }
   
-  static public function of(a:Source, b:Source) 
+  static public function of(a:Source, b:Source) //TODO: consider dealing with null
     return new CompoundSource(
       switch [Std.instance(a, CompoundSource), Std.instance(b, CompoundSource)] {
         case [null, null]: 

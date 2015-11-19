@@ -98,4 +98,7 @@ class FakeSource implements SourceObject {
   public function close()
     return Future.sync(Success(Noise));
   
+  public function parse(_) {
+    return null;
+  }
 }
