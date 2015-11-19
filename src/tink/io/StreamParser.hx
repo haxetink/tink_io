@@ -11,7 +11,7 @@ interface StreamParser<Result> {
 	function eof():Outcome<Result, Error>;
 }
 
-enum ParseStep<Result, State> {
+enum ParseStep<Result> {
 	Failed(e:Error);
 	Done(r:Result);
 	Progressed;
@@ -24,7 +24,7 @@ class ByteWiseParser<Result> implements StreamParser<Result> {
 	public function new() 
     resume = Success(None);
 	
-	function read(c:Int):ParseStep<Result, State>
+	function read(c:Int):ParseStep<Result>
 		return throw 'not implemented';
 		
 	public function eof():Outcome<Result, Error> 
