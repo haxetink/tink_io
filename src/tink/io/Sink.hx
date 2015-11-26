@@ -1,6 +1,8 @@
 package tink.io;
 
 import haxe.io.*;
+import tink.io.Source;
+import tink.io.IdealSource;
 
 using tink.CoreApi;
 
@@ -214,21 +216,30 @@ class ParserSink<T> implements SinkObject {
             else {
               
               var last = from.available;
-              
-              switch parser.progress(from) {
-                case Success(d):
-                  
-                  switch d {
-                    case Some(v):
-                      this.wait = onResult(v);
-                    case None:
-                  }
-                  
-                  Success(Progress.by(last - from.available));
-                  
-                case Failure(f):
-                  Failure(f);
-              }
+              if (last == 0 && !from.writable)
+                switch parser.eof() {
+                  case Success(v):
+                    doClose();
+                    this.wait = onResult(v);//if it helps?
+                    Success(Progress.EOF);
+                  case Failure(e):
+                    state = Failure(e);
+                }
+              else
+                switch parser.progress(from) {
+                  case Success(d):
+                    
+                    switch d {
+                      case Some(v):
+                        this.wait = onResult(v);
+                      case None:
+                    }
+                    
+                    Success(Progress.by(last - from.available));
+                    
+                  case Failure(f):
+                    state = Failure(f);
+                }
             }
         );
   
@@ -236,4 +247,22 @@ class ParserSink<T> implements SinkObject {
     doClose();
     return Future.sync(Success(Noise));
   }
+  
+  public function parse(s:Source) {
+    return Future.async(function (cb:Outcome<Source, Error>->Void) {
+      s.pipeTo(this).handle(function (res) 
+        cb(switch res.status {
+          case AllWritten:
+            Success((Empty.instance : Source));
+          case SinkEnded(rest):
+            Success(s.prepend((rest.content() : Source)));
+          case SinkFailed(e, _):
+            Failure(e);
+          case SourceFailed(e):
+            Failure(e);
+        })
+      );
+    });
+  }
+  
 }

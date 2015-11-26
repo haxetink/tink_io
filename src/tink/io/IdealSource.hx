@@ -14,12 +14,12 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
       if (b == null) Empty.instance;
       else new ByteSource(b, offset);
     
-  @:from static function fromBytes(b:Bytes)
+  @:from static function fromBytes(b:Bytes):IdealSource
     return ofBytes(b);
     
-  @:from static function fromString(s:String)
+  @:from static function fromString(s:String):IdealSource
     return 
-      if (s == null) Empty.instance;
+      if (s == null) (Empty.instance : IdealSourceObject);
       else ofBytes(Bytes.ofString(s));
   
   static public function create():SyntheticIdealSource

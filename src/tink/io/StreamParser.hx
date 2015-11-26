@@ -49,11 +49,7 @@ class ByteWiseParser<Result> implements StreamParser<Result> {
 					return Success(Some(r));
 			}
     
-		return 
-      if (buffer.available == 0 && buffer.writable == false)
-        eof().map(Some);
-      else
-        resume;
+		return resume;
 	}
 	
 }

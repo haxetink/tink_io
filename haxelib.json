@@ -1,5 +1,5 @@
 {
-	"name": "tink_runloop",
+	"name": "tink_io",
 	"license": "MIT",
 	"tags": [
 		"tink",
@@ -16,6 +16,7 @@
 	"version": "0.0.0",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
-		"tink_core": ""
+		"tink_core": "",
+    "tink_streams": "",
 	}
 }

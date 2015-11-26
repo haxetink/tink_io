@@ -6,6 +6,8 @@ import tink.io.IdealSource;
 import tink.io.Pipe;
 import tink.io.Sink;
 import tink.io.Worker;
+import tink.streams.Stream;
+import tink.streams.StreamStep;
 
 using tink.CoreApi;
 
@@ -45,6 +47,7 @@ interface SourceObject {
   function close():Surprise<Noise, Error>;
   function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
+  function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>;
 }
 
 #if nodejs
@@ -188,8 +191,10 @@ class AsyncSource extends SourceBase {
 }
 
 class SourceBase implements SourceObject {
+  
   public function prepend(other:Source):Source
     return CompoundSource.of(other, this);
+    
   public function append(other:Source):Source
     return CompoundSource.of(this, other);
     
@@ -208,27 +213,67 @@ class SourceBase implements SourceObject {
       parseWhile(parser, function (x) { ret = x; return Future.sync(false); } ) 
       >> function (s:Source) return { data: ret, rest: s };
   }      
+  
+  public function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>
+    return new ParserSink(parser, cond).parse(this);
     
-  public function parseWhile<T>(parser:StreamParser<T>, cond):Surprise<Source, Error>
-    return Future.async(function (cb:Outcome<Source, Error>->Void) {
-      var ret = null;
-      var sink = new ParserSink(parser, cond);
-      
-      pipeTo(sink).handle(function (res) switch res.status {
-        case AllWritten:
-          cb(Success((Empty.instance : Source)));
-        case SinkEnded(rest):
-          cb(Success((rest.content() : Source).append(this)));
-        case SinkFailed(e, _):
-          cb(Failure(e));
-        case SourceFailed(e):
-          cb(Failure(e));
-      });
-    });    
+  public function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>
+    return new ParsingStream(this, parser, rest).next;
+}
+
+private class ParsingStream<T> {//TODO: this still has some logic now moved out to tink_streams. Try to leverage that.
+  
+  var nextStep:FutureTrigger<StreamStep<T>>;
+  var awaitRead:FutureTrigger<Bool>;
+  
+  public function new(source:Source, parser, rest:Callback<Source>) {
+    
+    nextStep = Future.trigger();
+    awaitRead = Future.trigger();
+    
+    new ParserSink(parser, onResult).parse(source).handle(function (x) switch x {
+      case Success(v): 
+        
+        awaitRead.asFuture().handle(function () {
+          nextStep.trigger(End);
+          if (rest != null) rest.invoke(v);
+        });
+        
+      case Failure(e):
+        nextStep.trigger(Fail(e));
+    });
+  }
+  
+  public function next():Future<StreamStep<T>> {
+    var ret = nextStep;
+    awaitRead.trigger(true);
+    return ret;
+  }
+  
+  function onResult(data:T):Future<Bool>
+    return
+      if (data == null) {
+        nextStep.trigger(End);
+        Future.sync(false);
+      }
+      else {
+        var resume = awaitRead.asFuture();
+        resume.handle(function () {
+          var old = nextStep;
+          
+          nextStep = Future.trigger();
+          awaitRead = Future.trigger();
+          
+          old.trigger(Data(data));
+        });
+        resume;
+      }
 }
 
 class FutureSource extends SourceBase {
+  
   var s:Surprise<Source, Error>;
+  
   public function new(s)
     this.s = s;
     

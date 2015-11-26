@@ -31,6 +31,15 @@ class StreamParserTest extends TestCase {
     });
     
   }
+  
+  function testStreaming() {
+    var str = 'hello world !!! how are you ??? ignore all this';
+    
+    var source:Source = str;
+    source.parseStream(new UntilSpace()).fold('', function (a, b) return '$b-$a').handle(function (x) {
+      assertEquals(' $str'.split(' ').join('-'), x.sure());
+    });
+  }
 }
 
 private class UntilSpace extends ByteWiseParser<String> {

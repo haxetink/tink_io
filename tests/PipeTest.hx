@@ -62,21 +62,18 @@ class FakeSink implements SinkObject {
     return len;
   }
 }
-class FakeSource implements SourceObject {
+
+class FakeSource extends SourceBase {
   var data:Bytes;
   var pos = 0;
   var error:Dynamic;
-  public function pipeTo(dest:Sink):Future<PipeResult>
-    return Pipe.make(this, dest);
+    
   public function new(data, ?error) {
     this.data = data;
     this.error = error;
-  }
+  }  
   
-  public function append(other:Source):Source 
-    return CompoundSource.of(this, other);
-  
-  public function read(into:Buffer):Surprise<Progress, Error> 
+  override public function read(into:Buffer):Surprise<Progress, Error> 
     return Future.sync(into.tryReadingFrom('fake source', this));
   
   public function readBytes(bytes:Bytes, offset:Int, len:Int):Int {
@@ -95,10 +92,7 @@ class FakeSource implements SourceObject {
     return len;  
   }
   
-  public function close()
+  override public function close()
     return Future.sync(Success(Noise));
   
-  public function parse(_) {
-    return null;
-  }
 }

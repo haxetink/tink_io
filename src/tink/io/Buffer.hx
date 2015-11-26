@@ -5,11 +5,11 @@ import haxe.io.Error in IoError;
 
 using tink.CoreApi;
 
-typedef Writable = { 
+typedef WritesBytes = { 
 	private function writeBytes(from:Bytes, pos:Int, len:Int):Int; 
 }
 
-typedef Readable = {
+typedef ReadsBytes = {
 	private function readBytes(into:Bytes, pos:Int, len:Int):Int; 	
 }
 
@@ -129,13 +129,13 @@ class Buffer {
    * 
    * If the buffer handles an error, it is best to reset the destination to a known state, before attempting another write.
    */
-	public function tryWritingTo(name:String, dest:Writable):Outcome<Progress, Error> 
+	public function tryWritingTo(name:String, dest:WritesBytes):Outcome<Progress, Error> 
 		return safely('Failed writing to $name', writeTo.bind(dest));
 	
   /**
    * Reads from a source with error handling. See tryWritingTo
    */  
-	public function tryReadingFrom(name:String, source:Readable):Outcome<Progress, Error> 
+	public function tryReadingFrom(name:String, source:ReadsBytes):Outcome<Progress, Error> 
 		return safely('Failed reading from $name', readFrom.bind(source));			
 	
   /**
@@ -145,7 +145,7 @@ class Buffer {
    * 
    * Use only if you know the destination not to produce exceptions.
    */
-	public function writeTo(dest:Writable):Progress {
+	public function writeTo(dest:WritesBytes):Progress {
 		
 		if (available == 0) 
 			return 
@@ -189,7 +189,7 @@ class Buffer {
    * 
    * Use only if you know the source not to produce exceptions.
    */
-	public function readFrom(source:Readable):Progress {
+	public function readFrom(source:ReadsBytes):Progress {
 		if (!writable) return Progress.EOF;
 		if (available == size) return Progress.NONE;
 		
