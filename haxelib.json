@@ -17,6 +17,6 @@
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_core": "",
-    "tink_streams": "",
+    "tink_streams": ""
 	}
 }
