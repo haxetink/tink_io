@@ -119,7 +119,7 @@ class Buffer {
 			catch (e:Error) 
 				Failure(e)
 			catch (e:Dynamic) 
-        Failure(new Error('$operation due to $e', e));
+        Failure(Error.withData('$operation due to $e', e));
   
 	
   /**
