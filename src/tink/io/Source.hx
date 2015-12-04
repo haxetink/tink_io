@@ -40,6 +40,7 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
 }
 
 interface SourceObject {
+  function idealize(onError:Callback<Error>):IdealSource;
   function prepend(other:Source):Source;
   function append(other:Source):Source;
   function read(into:Buffer):Surprise<Progress, Error>;
@@ -103,7 +104,7 @@ class NodeSource extends SourceBase {
   }
   
   override public function close():Surprise<Noise, Error> {
-    return Future.sync(Success(Noise));
+    return Future.sync(Success(Noise));//TODO: implement
   }
 }
 #end
@@ -192,6 +193,9 @@ class AsyncSource extends SourceBase {
 
 class SourceBase implements SourceObject {
   
+  public function idealize(onError:Callback<Error>):IdealSource
+    return new IdealizedSource(this, onError);
+  
   public function prepend(other:Source):Source
     return CompoundSource.of(other, this);
     
@@ -202,7 +206,7 @@ class SourceBase implements SourceObject {
     return throw 'not implemented';
   
   public function close():Surprise<Noise, Error>
-    return throw 'not implemented';
+    return Future.sync(Success(Noise));
   
   public function pipeTo(dest:Sink):Future<PipeResult>
     return Pipe.make(this, dest);

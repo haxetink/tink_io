@@ -1,8 +1,9 @@
 package tink.io;
 
 import haxe.io.*;
-import tink.io.Source;
+import tink.io.IdealSink;
 import tink.io.IdealSource;
+import tink.io.Source;
 
 using tink.CoreApi;
 
@@ -26,7 +27,7 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
 }
 
 #if nodejs
-class NodeSink extends AsyncSink {
+class NodeSink extends SinkBase {
   var target:js.node.stream.Writable.IWritable;
   var name:String;
   public function new(target, name) {
@@ -80,7 +81,7 @@ class NodeSink extends AsyncSink {
 }
 #end
 
-class AsyncSink implements SinkObject {
+class AsyncSink extends SinkBase {
   
   var closer:Void->Surprise<Noise, Error>;
   var closing:Surprise<Noise, Error>;
@@ -93,7 +94,7 @@ class AsyncSink implements SinkObject {
     last = Future.sync(Success(Progress.NONE));
   }
   
-  public function write(from:Buffer) {
+  override public function write(from:Buffer) {
     if (closing != null)
       return Future.sync(Success(Progress.EOF));
     
@@ -107,7 +108,7 @@ class AsyncSink implements SinkObject {
     return f;
   }
   
-  public function close() {
+  override public function close() {
     if (closing == null) 
       cause(closing = last.flatMap(function (_) return closer()));
     
@@ -115,7 +116,7 @@ class AsyncSink implements SinkObject {
   }
 }
 
-class FutureSink implements SinkObject {
+class FutureSink extends SinkBase {
   var f:Surprise<Sink, Error>;
   
   public function new(f)
@@ -126,10 +127,10 @@ class FutureSink implements SinkObject {
     return f;
   }
     
-  public function write(from:Buffer):Surprise<Progress, Error> 
+  override public function write(from:Buffer):Surprise<Progress, Error> 
     return cause(f >> function (s:Sink) return s.write(from));
   
-  public function close() 
+  override public function close() 
     return cause(f >> function (s:Sink) return s.close());
   
   public function toString() {
@@ -139,7 +140,7 @@ class FutureSink implements SinkObject {
   }  
 }
 
-class StdSink implements SinkObject {
+class StdSink extends SinkBase {
   
   var name:String;
   var target:Output;
@@ -151,10 +152,10 @@ class StdSink implements SinkObject {
     this.worker = worker;
   }
     
-  public function write(from:Buffer):Surprise<Progress, Error> 
+  override public function write(from:Buffer):Surprise<Progress, Error> 
     return worker.work(function () return from.tryWritingTo(name, target));
   
-  public function close() {
+  override public function close() {
     return 
       worker.work(function () 
         return Error.catchExceptions(
@@ -183,9 +184,21 @@ interface SinkObject {
    */
 	function write(from:Buffer):Surprise<Progress, Error>;
 	function close():Surprise<Noise, Error>;  
+  function idealize(onError:Callback<Error>):IdealSink;
 }
 
-class ParserSink<T> implements SinkObject {
+class SinkBase implements SinkObject {
+	public function write(from:Buffer):Surprise<Progress, Error>
+    return throw 'writing not implemented';
+    
+	public function close():Surprise<Noise, Error>
+    return Future.sync(Success(Noise));
+    
+  public function idealize(onError:Callback<Error>):IdealSink
+    return new IdealizedSink(this, onError);
+}
+
+class ParserSink<T> extends SinkBase {
   
   var parser:StreamParser<T>;
   var state:Outcome<Progress, Error>;
@@ -202,7 +215,7 @@ class ParserSink<T> implements SinkObject {
     if (state == null)
       state = Success(Progress.EOF);
   
-  public function write(from:Buffer):Surprise<Progress, Error>
+  override public function write(from:Buffer):Surprise<Progress, Error>
     return
       if (this.state != null)
         Future.sync(this.state);
@@ -243,7 +256,7 @@ class ParserSink<T> implements SinkObject {
             }
         );
   
-	public function close():Surprise<Noise, Error> {
+	override public function close():Surprise<Noise, Error> {
     doClose();
     return Future.sync(Success(Noise));
   }

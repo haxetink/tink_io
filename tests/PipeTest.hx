@@ -33,12 +33,12 @@ class PipeTest extends TestCase {
 }
 
 
-class FakeSink implements SinkObject {
+class FakeSink extends SinkBase {
   var out:BytesBuffer;
   public function new() {
     this.out = new BytesBuffer();
   }
-	public function write(from:Buffer):Surprise<Progress, Error> {
+	override public function write(from:Buffer):Surprise<Progress, Error> {
     return Future.sync(from.tryWritingTo('fake sink', this));
   }
   public function writeBytes(bytes:Bytes, pos:Int, len:Int):Int {
@@ -50,9 +50,6 @@ class FakeSink implements SinkObject {
   
   public function getData()
     return this.out.getBytes();
-  
-	public function close() 
-    return Future.sync(Success(Noise));
  
   static public function randomize(len:Int) {
     if (len > 8) {

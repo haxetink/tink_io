@@ -32,6 +32,33 @@ interface IdealSourceObject extends SourceObject {
   function closeSafely():Future<Noise>;
 }
 
+class IdealizedSource extends IdealSourceBase {
+  var target:Source;
+  var onError:Callback<Error>;
+  
+  public function new(target, onError) {
+    this.target = target;
+    this.onError = onError;
+  }
+  
+  override public function readSafely(into:Buffer):Future<Progress>  
+    return target.read(into).map(function (x) return switch x {
+      case Success(v): v;
+      case Failure(e): 
+        onError.invoke(e);
+        Progress.EOF;
+    });
+    
+  override public function closeSafely():Future<Noise>
+    return target.close().map(function (x) return switch x {
+      case Failure(e):
+        onError.invoke(e);
+        Noise;
+      case Success(v): v;
+    });
+  
+}
+
 class Empty extends IdealSourceBase {
   function new() {}
   override public function readSafely(into:Buffer):Future<Progress> 
@@ -113,6 +140,9 @@ class SyntheticIdealSource extends IdealSourceBase {
 }
 
 class IdealSourceBase extends SourceBase implements IdealSourceObject {
+  
+  override public function idealize(onError:Callback<Error>):IdealSource
+    return this;
   
   public function readSafely(into:Buffer):Future<Progress>  
     return throw 'abstract';
