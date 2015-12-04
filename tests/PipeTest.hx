@@ -19,14 +19,18 @@ class PipeTest extends TestCase {
       var s = buf.toString();
       var out = new FakeSink();
       
-      Pipe.make(new FakeSource(Bytes.ofString(s)), out, Bytes.alloc(511)).handle(
+      function noError(e) {
+        assertEquals(null, e);
+      }
+      
+      Pipe.make(new FakeSource(Bytes.ofString(s)).idealize(noError), out.idealize(noError), Bytes.alloc(511)).handle(
         function (o) switch o {
-          case { bytesWritten: b, status: AllWritten } :
-            assertEquals(s.length, b); 
+          case AllWritten:
             assertEquals(s, out.getData().toString());
-          default:
         }
       );
+      
+      
       
     }
   }

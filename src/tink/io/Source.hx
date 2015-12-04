@@ -44,7 +44,7 @@ interface SourceObject {
   function prepend(other:Source):Source;
   function append(other:Source):Source;
   function read(into:Buffer):Surprise<Progress, Error>;
-  function pipeTo(sink:Sink):Future<PipeResult>;
+  function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>>;
   function close():Surprise<Noise, Error>;
   function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
@@ -137,7 +137,7 @@ class NodeSource extends AsyncSource {
   public function toString() 
     return this.name;
   
-  override public function pipeTo(dest:Sink):Future<PipeResult> {
+  override function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> {
     return 
       if (Std.is(dest, NodeSink)) {
         var dest = (cast dest : NodeSink);
@@ -208,7 +208,7 @@ class SourceBase implements SourceObject {
   public function close():Surprise<Noise, Error>
     return Future.sync(Success(Noise));
   
-  public function pipeTo(dest:Sink):Future<PipeResult>
+  public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>>
     return Pipe.make(this, dest);
     
   public function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error> {
