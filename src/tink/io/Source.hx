@@ -106,36 +106,6 @@ class NodeSource extends SourceBase {
   override public function close():Surprise<Noise, Error> {
     return Future.sync(Success(Noise));//TODO: implement
   }
-}
-#end
-#if nodejsold
-class NodeSource extends AsyncSource {
-  var target:js.node.stream.Readable.IReadable;
-  var name:String;
-  public function new(target, name) {
-    this.target = target;
-    this.name = name;
-    super(
-      function (onChunk, onEnd) { 
-        
-        target.on('data', function handleChunk(blob:Dynamic) onChunk.trigger(Bytes.ofData(blob)));
-        target.on('end', function handleEnd() { onEnd.trigger(Success(Noise)); });
-        target.on('error', function handleError(e) onEnd.trigger(Failure(new Error('Error $e on $name'))));
-        
-      }, 
-      closeTarget
-    );
-  }
-  
-  function closeTarget() {
-    try {
-      untyped target.close(); //Not documented, but seems available - except when it isn't ... hence the pokemon clause \o/ https://github.com/nodejs/node-v0.x-archive/blob/cfcb1de130867197cbc9c6012b7e84e08e53d032/lib/fs.js#L1597-L1620
-    }
-    catch (e:Dynamic) {}
-  }
-  
-  public function toString() 
-    return this.name;
   
   override function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> {
     return 
@@ -147,12 +117,12 @@ class NodeSource extends AsyncSource {
         
         return Future.async(function (cb) {
           @:privateAccess dest.next({
-            unpipe: function (s) if (s == target) cb(new PipeResult(-1, AllWritten)),
+            unpipe: function (s) if (s == target) cb(AllWritten),
           });
         });
       }
       else super.pipeTo(dest);
-  }
+  }  
 }
 #end
 
