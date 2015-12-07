@@ -1,5 +1,6 @@
 package;
 
+import haxe.Timer;
 import haxe.unit.TestCase;
 import tink.io.Source;
 import tink.io.StreamParser;
@@ -18,6 +19,38 @@ class StreamParserTest extends TestCase {
       x.rest.parse(new UntilSpace()).handle(function (y) x = y.sure());
       assertEquals('!!!', x.data);
     });
+  }
+  
+  function testSplit() {
+    var str = 'hello !!! world !!!!! !!! !!';
+    var source:Source = str,
+        a = [];
+    source.parseWhile(new Splitter('!!!'), function (x) return Future.sync(a.push(x.toString()) > 0)).handle(function (x) {
+      assertTrue(x.isSuccess());
+      assertEquals('hello , world ,!! , !!', a.join(','));
+    });
+  }
+  
+  function testSplitSpeed() {
+    var str = 'werlfkmwerf';
+    
+    for (i in 0...15)
+      str += str;
+      
+    var chunk = str,
+        delim = '---';
+    
+    str += delim;
+    
+    for (i in 0...3)
+      str += str;
+      
+    trace(str.length);    
+    var start = Timer.stamp();
+    (str : Source).parseWhile(new Splitter(delim), function (x) return Future.sync(true)).handle(function (x) {
+      trace(Timer.stamp() - start);
+    });
+
   }
   
   function testParseWhile() {
