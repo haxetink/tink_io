@@ -40,7 +40,7 @@ class Pipe {
 	function flush() {
 		dest.write(buffer).handle(function (o) switch o {
 			case Success(_.isEof => true):
-        yield(if (buffer.available > 0) SinkFailed(new Error('Piping failed because destination closed prematurely: $dest'), buffer) else AllWritten);
+        yield(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
 			case Success(v):
 				if (buffer.available == 0)
 					read();
@@ -64,6 +64,7 @@ class Pipe {
 enum PipeResult<In, Out> {
   AllWritten:PipeResult<In, Out>;
   SinkFailed(e:Error, rest:Buffer):PipeResult<In, Error>;
+  SinkEnded(rest:Buffer):PipeResult<In, Error>;
   SourceFailed(e:Error):PipeResult<Error, Out>;
 }
 

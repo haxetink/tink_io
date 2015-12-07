@@ -22,7 +22,7 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
   static public function async(f, close) 
     return new AsyncSource(f, close);
   
-  static public function failure(e:Error):Source
+  @:from static public function failure(e:Error):Source
     return new FailedSource(e);
   
   static public function ofInput(name:String, input:Input, ?worker:Worker):Source
@@ -40,12 +40,16 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
 }
 
 interface SourceObject {
-  function idealize(onError:Callback<Error>):IdealSource;
+    
+  function read(into:Buffer):Surprise<Progress, Error>;
+  function close():Surprise<Noise, Error>;
+  
   function prepend(other:Source):Source;
   function append(other:Source):Source;
-  function read(into:Buffer):Surprise<Progress, Error>;
   function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>>;
-  function close():Surprise<Noise, Error>;
+  
+  function idealize(onError:Callback<Error>):IdealSource;
+  
   function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
   function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>;

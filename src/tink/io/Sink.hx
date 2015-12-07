@@ -261,10 +261,10 @@ class ParserSink<T> extends SinkBase {
     return Future.sync(Success(Noise));
   }
   
-  public function parse(s:Source) {
+  public function parse(s:Source)
     return Future.async(function (cb:Outcome<Source, Error>->Void) {
       s.pipeTo(this).handle(function (res) 
-        cb(switch res.status {
+        cb(switch res {
           case AllWritten:
             Success((Empty.instance : Source));
           case SinkEnded(rest):
@@ -276,6 +276,5 @@ class ParserSink<T> extends SinkBase {
         })
       );
     });
-  }
   
 }

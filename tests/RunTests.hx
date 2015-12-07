@@ -2,7 +2,8 @@ package;
 
 import haxe.io.Bytes;
 import haxe.unit.TestRunner;
-import tink.io.Source;
+//import tink.io.Source;
+import tink.io.Pipe;
 
 using tink.CoreApi;
 

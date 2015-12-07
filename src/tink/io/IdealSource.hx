@@ -2,7 +2,7 @@ package tink.io;
 
 import haxe.io.*;
 import tink.io.*;
-import tink.io.Pipe.PipeResult;
+import tink.io.Pipe;
 import tink.io.Source;
 
 using tink.CoreApi;
@@ -28,6 +28,7 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
 }
 
 interface IdealSourceObject extends SourceObject {
+  function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>;
   function readSafely(into:Buffer):Future<Progress>;
   function closeSafely():Future<Noise>;
 }
@@ -155,6 +156,10 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
       
   override public inline function read(into:Buffer) 
     return readSafely(into).map(Success);
+    
+  public function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>
+    return Pipe.make(this, dest);
+    
 }
 
 class ByteSource extends IdealSourceBase {
@@ -182,30 +187,6 @@ class ByteSource extends IdealSourceBase {
   
   public function toString()
     return '[Byte Source $pos/${data.length}]';
-  
-  override public function pipeTo(dest:Sink):Future<PipeResult> {
-    return 
-      if (true)
-        super.pipeTo(dest);
-      //if (Std.is(dest, NodeSink)) {
-        //var dest:NodeSink = cast dest;
-        //@:privateAccess {
-          //dest.target.
-        //}
-      //}
-      else 
-      {
-        @:privateAccess {
-          var pipe = new Pipe(this, dest, data);
-          pipe.buffer.seal();
-          pipe.buffer.available = data.length;
-          this.pos = data.length;
-          pipe.flush();
-          pipe.result;
-        }
-      }
-  }
-  
     
   override public function readSafely(into:Buffer):Future<Progress>
     return Future.sync(into.readFrom(this));
