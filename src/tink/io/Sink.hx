@@ -14,7 +14,10 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
   static public function ofNodeStream(w:js.node.stream.Writable.IWritable, name):Sink
     return new NodeSink(w, name);
   #end
-    
+  
+  static public function inMemory() 
+    return ofOutput('Memory sink', new BytesOutput(), Worker.EAGER);
+  
   static public function async(writer, closer):Sink
     return new AsyncSink(writer, closer);
   
@@ -204,6 +207,7 @@ class ParserSink<T> extends SinkBase {
   var state:Outcome<Progress, Error>;
   var onResult:T->Future<Bool>;
   var wait:Future<Bool>;
+  var worker:Worker;
   
   public function new(parser, onResult) {
     this.parser = parser;
@@ -220,7 +224,8 @@ class ParserSink<T> extends SinkBase {
       if (this.state != null)
         Future.sync(this.state);
       else
-        this.wait.map(function (resume) 
+        this.wait.map(function (resume) (
+        //this.wait.flatMap(function (resume) return worker.work(function () 
           return
             if (!resume) {
               doClose();
@@ -254,7 +259,7 @@ class ParserSink<T> extends SinkBase {
                     state = Failure(f);
                 }
             }
-        );
+        ));
   
 	override public function close():Surprise<Noise, Error> {
     doClose();
@@ -263,7 +268,7 @@ class ParserSink<T> extends SinkBase {
   
   public function parse(s:Source)
     return Future.async(function (cb:Outcome<Source, Error>->Void) {
-      s.pipeTo(this).handle(function (res) 
+      Pipe.make(s, this, Buffer.allocMin(2 * parser.minSize())).handle(function (res) 
         cb(switch res {
           case AllWritten:
             Success((Empty.instance : Source));

@@ -2,9 +2,11 @@ package tink.io;
 
 import haxe.io.*;
 import tink.io.Buffer;
+import tink.io.IdealSink;
 import tink.io.IdealSource;
 import tink.io.Pipe;
 import tink.io.Sink;
+import tink.io.StreamParser;
 import tink.io.Worker;
 import tink.streams.Stream;
 import tink.streams.StreamStep;
@@ -19,6 +21,10 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     return new NodeSource(r, name);
   #end
   
+  static public function ofStream(s:Stream<Bytes>) {
+    
+  }
+  
   static public function async(f, close) 
     return new AsyncSource(f, close);
   
@@ -29,7 +35,7 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     return new StdSource(name, input, worker);
     
   @:from static public function flatten(s:Surprise<Source, Error>):Source
-    return new FutureSource(s);
+    return new FutureSource(s);    
     
   @:from static function fromBytes(b:Bytes):Source
     return tink.io.IdealSource.ofBytes(b);
@@ -53,6 +59,8 @@ interface SourceObject {
   function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
   function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>;
+  function split(delim:Bytes):{ first:Source, then:Source };
+  
 }
 
 #if nodejs
@@ -197,6 +205,40 @@ class SourceBase implements SourceObject {
     
   public function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>
     return new ParsingStream(this, parser, rest).next;
+    
+  public function split(delim:Bytes):{ first:Source, then:Source } {
+    //TODO: implement this in a streaming manner
+    var f = parse(new Splitter(delim));
+    
+    return {
+      first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
+      then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
+    }
+  }
+}
+
+class SplitSource extends SourceBase {
+  
+  var source:Source;
+  var readBuffer:Buffer;
+  var scanBuffer:Bytes;
+  var delim:Bytes;
+  var trigger:FutureTrigger<Outcome<Source, Error>>;
+  
+  public var next(default, null):Source;
+  
+  public function new(source, delim) {
+    this.source = source;
+    this.trigger = Future.trigger();
+    this.next = new FutureSource(trigger);
+    this.delim = delim;
+    //this.buffer = Buffer.allocMin(delim.length * 2);
+    //this.bytes = @:privateAccess buffer.bytes;
+  }
+  
+  //override public function read(into:Buffer):Surprise<Progress, Error> {
+    
+  //}
 }
 
 private class ParsingStream<T> {//TODO: this still has some logic now moved out to tink_streams. Try to leverage that.
@@ -348,7 +390,7 @@ class CompoundSource extends SourceBase {
       }
     });
   }
-  
+  //TODO: override pipeTo here to get better throughput
   override public function read(into:Buffer):Surprise<Progress, Error>
 		return switch parts {
 			case []: 

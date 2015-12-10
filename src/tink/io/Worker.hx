@@ -3,9 +3,18 @@ package tink.io;
 using tink.CoreApi;
 
 abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
+  
+  static public var EAGER(default, null):Worker = new EagerWorker();
+  static public var DEFAULT(default, null):Lazy<Worker> = 
+    #if tink_runloop
+      function () return new RunLoopWorkerPool(16); 
+    #else
+      EAGER;
+    #end
+  
   public inline function work<A>(task:Lazy<A>):Future<A> {
     if (this == null)
-      this = DefaultWorker.INSTANCE;
+      this = DEFAULT;
     
     return this.work(task);
   }
@@ -16,19 +25,12 @@ abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   #end
 }
 
-private class DefaultWorker implements WorkerObject {
+private class EagerWorker implements WorkerObject {
   
-  function new() { }
+  public function new() { }
   
   public function work<A>(task:Lazy<A>):Future<A>
-    return Future.sync(task.get());
-    
-  static public var INSTANCE(default, null):Lazy<Worker> = 
-    #if tink_runloop
-      function () return new RunLoopWorkerPool(16); 
-    #else
-      (new DefaultWorker() : Worker);
-    #end
+    return Future.sync(task.get());    
 }
 
 #if tink_runloop

@@ -12,13 +12,15 @@ class Pipe {
   var dest:Sink;
 	var result:FutureTrigger<PipeResult<Error, Error>>;
   
-  function new(source, dest, ?bytes) {
-    if (bytes == null)
-      bytes = Bytes.alloc(0x20000);
+  function new(source, dest, ?buffer) {
+    
+    if (buffer == null)
+      buffer = Buffer.alloc(17);
+      
 		this.source = source;
 		this.dest = dest;
 		
-		this.buffer = new Buffer(bytes);
+		this.buffer = buffer;
 		this.result = Future.trigger();
 		
   }
@@ -42,7 +44,7 @@ class Pipe {
 			case Success(_.isEof => true):
         yield(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
 			case Success(v):
-				if (buffer.available == 0)
+				if (buffer.writable) //TODO: find a good threshold
 					read();
 				else 
 					flush();

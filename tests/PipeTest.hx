@@ -23,7 +23,7 @@ class PipeTest extends TestCase {
         assertEquals(null, e);
       }
       
-      Pipe.make(new FakeSource(Bytes.ofString(s)).idealize(noError), out.idealize(noError), Bytes.alloc(511)).handle(
+      Pipe.make(new FakeSource(Bytes.ofString(s)).idealize(noError), out.idealize(noError), Buffer.unmanaged(Bytes.alloc(511))).handle(
         function (o) switch o {
           case AllWritten:
             assertEquals(s, out.getData().toString());

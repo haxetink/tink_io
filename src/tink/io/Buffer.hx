@@ -2,6 +2,7 @@ package tink.io;
 
 import haxe.io.*;
 import haxe.io.Error in IoError;
+import tink.concurrent.Queue;
 
 using tink.CoreApi;
 
@@ -16,7 +17,8 @@ typedef ReadsBytes = {
 class Buffer {
 	var bytes:Bytes;
 	var raw:BytesData;
-	var zero:Int = 0;
+  var width:Int;
+	public var zero(default, null):Int = 0;
   public var retainCount(default, null) = 0;
   
   public function retain() {
@@ -48,9 +50,10 @@ class Buffer {
 		inline function get_freeBytes()
 			return bytes.length - available;
 			
-	public function new(bytes) {
+	function new(bytes, width) {
 		this.bytes = bytes;
 		this.raw = bytes.getData();
+    this.width = width;
 	}
 	
   /**
@@ -64,16 +67,19 @@ class Buffer {
    * Does not affect the buffer.
    */
 	public function content():Bytes {
-		var ret = Bytes.alloc(available);
-    
-		if (zero <= end) 
+		return blitTo(Bytes.alloc(available));
+	}
+  
+  public function blitTo(ret:Bytes) {
+		if (zero + available <= size) 
 			ret.blit(0, bytes, zero, available);
 		else {
-			ret.blit(0, bytes, zero, bytes.length - zero);
 			ret.blit(bytes.length - zero, bytes, 0, end);
+			ret.blit(0, bytes, zero, bytes.length - zero);
 		}
-		return ret;
-	}
+    
+    return ret;
+  }
 		
 	public function toString() 
 		return '[Buffer $available/$size]';
@@ -176,6 +182,25 @@ class Buffer {
 		return Progress.by(transfered);
 	}	
 	
+  public function align() {
+    if (zero < end) 
+      return false;
+    
+    var copy = 
+      if (width > 0)
+        allocBytes(width);
+      else
+        Bytes.alloc(this.size);
+        
+    blitTo(copy);
+    var old = this.bytes;
+    this.bytes = copy;
+    this.raw = copy.getData();
+    this.zero = 0;
+    poolBytes(old, width);
+    return true;
+  }
+  
   public function clear() {
     this.zero = 0;
     this.available = 0;
@@ -210,12 +235,73 @@ class Buffer {
     
 		return Progress.by(transfered);
 	}
+    
 	static public var ZERO_BYTES(default, null) = Bytes.alloc(0);
+  
+  static function poolBytes(b:Bytes, width:Int) 
+    if (width >= MIN_WIDTH)
+      pool[width - MIN_WIDTH].add(b);
+  
 	function dispose() 
 		if (size > 0) {
+      var old = this.bytes;
 			this.bytes = ZERO_BYTES;
 			this.raw = this.bytes.getData();
 			this.zero = 0;
 			this.available = 0;
+      poolBytes(old, width);
 		}
+    
+  static public function allocMin(minSize:Int) {
+    
+    if (minSize > 1 << 28)
+      'Cannot allocate buffer of size $minSize';
+    
+    var width = 16;
+    var size = 1 << width;
+    
+    while (size < minSize) 
+      size = 1 << ++width;
+    
+    return alloc(width);
+  }
+  
+  static public function alloc(?width:Int = 17) {
+    
+    if (width < MIN_WIDTH)
+      width = MIN_WIDTH;
+      
+    if (width > MAX_WIDTH)
+      width = MAX_WIDTH;
+      
+    return new Buffer(allocBytes(width), width);
+  }
+  
+  static public function allocBytes(width:Int)
+    return 
+      switch pool[width - MIN_WIDTH].pop() {
+        case null: Bytes.alloc(1 << width);
+        case v: v;
+      }
+      
+  static public function releaseBytes(bytes:Bytes) {
+    
+    for (width in MIN_WIDTH...MAX_WIDTH)
+      if (bytes.length == 1 << width) {
+        poolBytes(bytes, width);
+        return true;
+      }
+    
+    return false;
+    
+  }
+  
+  static inline var MIN_WIDTH = 10;
+  static inline var MAX_WIDTH = 28;
+  
+  static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) new Queue<Bytes>()];
+  
+  static public function unmanaged(bytes:Bytes) {
+    return new Buffer(bytes, -1);
+  }
 }

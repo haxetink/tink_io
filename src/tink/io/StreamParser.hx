@@ -9,6 +9,7 @@ using tink.CoreApi;
  * Parsers, once created, should not cause side effects outside themselves, otherwise you will get really weird bugs.
  */
 interface StreamParser<Result> {
+  function minSize():Int;
 	function progress(buffer:Buffer):Outcome<Option<Result>, Error>;
 	function eof():Outcome<Result, Error>;
 }
@@ -19,84 +20,69 @@ enum ParseStep<Result> {
 	Progressed;
 }
 
-class Splitter extends ByteWiseParser<Bytes> {
-  var buf:BytesBuffer;
-  var delims:Array<Delimiter>;
-  var delim:String;
-  var pool:Array<Delimiter>;
-  public function new(delim:String) {
-    super();
-    this.delims = this.pool = [];
+class Splitter implements StreamParser<Bytes> {
+  var atEnd:Bool;
+  var out:BytesBuffer;
+  var delim:Bytes;
+  var result:Option<Bytes>;
+  
+  public function minSize()
+    return delim.length;
+  
+  public function new(delim) {
     this.delim = delim;
-    reset();
   }
   
   function reset() {
-    
-    for (d in delims) 
-      pool.push(d);
-    
-    this.delims = [];
-    this.buf = new BytesBuffer();
+    this.out = new BytesBuffer();
   }
   
-  override function read(c:Int):ParseStep<Bytes> {
-    if (c == -1) {
-      var bytes = this.buf.getBytes();
-      reset();
-      return Done(bytes);
+  function writeBytes(bytes:Bytes, start:Int, length:Int) {
+    
+    if (!atEnd) {
+      length -= delim.length;
+      if (length < 0) length = 0;
     }
     
-    this.buf.addByte(c);
-    
-    this.delims.push(switch pool.pop() {
-      case null: 
-        new Delimiter(delim);
-      case v: v;
-    });
-    
-    var nu = [];
-    
-    for (d in delims) 
-      switch d.read(c) {
-        case Done(r):
-          var bytes = this.buf.getBytes();
+    if (length > 0) {
+      for (i in 0...length) {
+        var found = true;
+        for (dpos in 0...delim.length) {
+          if (bytes.get(start + i + dpos) != delim.get(dpos)) {
+            found = false;
+            break;
+          }
+        }
+        if (found) {
+          out.addBytes(bytes, start, i);
+          result = Some(out.getBytes());
           reset();
-          return Done(bytes.sub(0, bytes.length - r));
-        case Progressed:
-          nu.push(d);
-        case Failed(e):
-          pool.push(d);
+          return i + delim.length;
+        }
       }
+      out.addBytes(bytes, start, length);
+    }
     
-    delims = nu;
-    
-    return Progressed;
-  }
-}
-
-private class Delimiter extends ByteWiseParser<Int> {
-  var str:String;
-  var pos:Int;
-  var failed:ParseStep<Int>;
-  
-  public function new(str) {
-    super();
-    this.failed = Failed(null);
-    this.str = str;
-    this.pos = 0;
+    return length;
   }
   
-  override function read(c:Int):ParseStep<Int>
-    return
-      if (str.charCodeAt(pos) == c) {
-        if (++pos == str.length) Done(pos);
-        else Progressed;
-      }
-      else {
-        pos = 0;
-        failed;
-      }
+	public function progress(buffer:Buffer):Outcome<Option<Bytes>, Error> {
+    if (result != None) {
+      reset();
+      result = None;
+    }
+    
+    if (buffer.size - buffer.zero <= delim.length) 
+      buffer.align();
+    
+    atEnd = !buffer.writable;
+    buffer.writeTo(this);
+    
+    return Success(result);
+  }
+	public function eof():Outcome<Bytes, Error> {
+    return Success(out.getBytes());
+  }
 }
 
 class ByteWiseParser<Result> implements StreamParser<Result> {
@@ -106,6 +92,9 @@ class ByteWiseParser<Result> implements StreamParser<Result> {
 	public function new() 
     resume = Success(None);
 	
+  public function minSize():Int
+    return 1;
+    
 	function read(c:Int):ParseStep<Result>
 		return throw 'not implemented';
 		

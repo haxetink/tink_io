@@ -1,8 +1,9 @@
 package;
 
+import haxe.io.*;
 import haxe.Timer;
 import haxe.unit.TestCase;
-import tink.io.Source;
+import tink.io.*;
 import tink.io.StreamParser;
 
 using tink.CoreApi;
@@ -25,32 +26,76 @@ class StreamParserTest extends TestCase {
     var str = 'hello !!! world !!!!! !!! !!';
     var source:Source = str,
         a = [];
-    source.parseWhile(new Splitter('!!!'), function (x) return Future.sync(a.push(x.toString()) > 0)).handle(function (x) {
+    source.parseWhile(new Splitter(Bytes.ofString('!!!')), function (x) return Future.sync(a.push(x.toString()) > 0)).handle(function (x) {
       assertTrue(x.isSuccess());
       assertEquals('hello , world ,!! , !!', a.join(','));
     });
   }
   
-  function testSplitSpeed() {
+  function testSingleSplit() {
+    var c = chunk();
+    var delim = '---12345-67890---';
+    var s = '$c$delim$c$delim$c';
+    
+    var parts = switch (s : Source).split(Bytes.ofString(delim)) {
+      case v: [v.first, v.then];
+    }
+    
+    var lengths = [c.length, 2 * c.length + delim.length];
+    for (p in parts) {
+      var out = new BytesOutput();
+      p.pipeTo(Sink.ofOutput('membuf', out, Worker.EAGER)).handle(function (x) {
+        assertEquals(lengths.shift(), out.getBytes().length);
+      });
+    }
+    assertEquals(0, lengths.length);
+  }
+  function chunk() {
     var str = 'werlfkmwerf';
     
-    for (i in 0...15)
+    for (i in 0...16)
       str += str;
       
-    var chunk = str,
-        delim = '---';
+    return str;
+  }
+  function testSplitSpeed() {
+    var chunk = chunk(),
+        delim = '-123456789-';
     
-    str += delim;
+    var str = chunk + delim;
     
     for (i in 0...3)
       str += str;
       
-    trace(str.length);    
+    str += chunk;
     var start = Timer.stamp();
-    (str : Source).parseWhile(new Splitter(delim), function (x) return Future.sync(true)).handle(function (x) {
-      trace(Timer.stamp() - start);
+    str.split(delim);
+    var direct = Timer.stamp() - start;
+    var start = Timer.stamp();
+    (str : Source).parseWhile(new Splitter(Bytes.ofString(delim)), function (x) { 
+      assertEquals(chunk.length, x.length);
+      return Future.sync(true); 
+    }).handle(function (x) {
+      assertTrue(x.isSuccess());
+      
+      var faster = Timer.stamp() - start < 100 * direct;
+      if (!faster)
+        trace([Timer.stamp() - start, direct]);
+      assertTrue(faster);
     });
-
+    
+    str = '$delim$str$delim';
+    var start = Timer.stamp();
+    (str : Source).parseWhile(new Splitter(Bytes.ofString(chunk)), function (x) {
+      assertEquals(delim.length, x.length);
+      return Future.sync(true);
+    }).handle(function (x) {
+      assertTrue(x.isSuccess());      
+      var faster = Timer.stamp() - start < 100 * direct;
+      if (!faster)
+        trace([Timer.stamp() - start, direct]);
+      assertTrue(faster);
+    });
   }
   
   function testParseWhile() {
