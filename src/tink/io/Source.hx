@@ -15,15 +15,11 @@ using tink.CoreApi;
 
 @:forward
 abstract Source(SourceObject) from SourceObject to SourceObject {
-  
+    
   #if nodejs
   static public function ofNodeStream(r:js.node.stream.Readable.IReadable, name)
     return new NodeSource(r, name);
   #end
-  
-  static public function ofStream(s:Stream<Bytes>) {
-    
-  }
   
   static public function async(f, close) 
     return new AsyncSource(f, close);
@@ -42,6 +38,26 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     
   @:from static function fromString(s:String):Source
     return fromBytes(Bytes.ofString(s));
+    
+}
+
+private class SimpleSource extends SourceBase {
+  
+  var closer:Void->Surprise<Noise, Error>;
+  var reader:Buffer->Surprise<Progress, Error>;
+  
+  public function new(reader, ?closer) {
+    this.reader = reader;
+    this.closer = closer;
+  }
+  
+  override public function close():Surprise<Noise, Error> 
+    return 
+      if (this.closer == null) super.close();
+      else closer();
+  
+  override public function read(into:Buffer):Surprise<Progress, Error>
+    return reader(into);
     
 }
 
@@ -64,7 +80,7 @@ interface SourceObject {
 }
 
 #if nodejs
-class NodeSource extends SourceBase {
+private class NodeSource extends SourceBase {
   
   var target:js.node.stream.Readable.IReadable;
   var name:String;
@@ -138,7 +154,7 @@ class NodeSource extends SourceBase {
 }
 #end
 
-class AsyncSource extends SourceBase {
+private class AsyncSource extends SourceBase {
   var data:SyntheticIdealSource;
   var end:Surprise<Noise, Error>;
   var onError:Surprise<Progress, Error>;
@@ -217,30 +233,6 @@ class SourceBase implements SourceObject {
   }
 }
 
-class SplitSource extends SourceBase {
-  
-  var source:Source;
-  var readBuffer:Buffer;
-  var scanBuffer:Bytes;
-  var delim:Bytes;
-  var trigger:FutureTrigger<Outcome<Source, Error>>;
-  
-  public var next(default, null):Source;
-  
-  public function new(source, delim) {
-    this.source = source;
-    this.trigger = Future.trigger();
-    this.next = new FutureSource(trigger);
-    this.delim = delim;
-    //this.buffer = Buffer.allocMin(delim.length * 2);
-    //this.bytes = @:privateAccess buffer.bytes;
-  }
-  
-  //override public function read(into:Buffer):Surprise<Progress, Error> {
-    
-  //}
-}
-
 private class ParsingStream<T> {//TODO: this still has some logic now moved out to tink_streams. Try to leverage that.
   
   var nextStep:FutureTrigger<StreamStep<T>>;
@@ -290,7 +282,7 @@ private class ParsingStream<T> {//TODO: this still has some logic now moved out 
       }
 }
 
-class FutureSource extends SourceBase {
+private class FutureSource extends SourceBase {
   
   var s:Surprise<Source, Error>;
   
@@ -311,7 +303,7 @@ class FutureSource extends SourceBase {
     
 }
 
-class FailedSource extends SourceBase {
+private class FailedSource extends SourceBase {
   var error:Error;
   
   public function new(error)
@@ -325,7 +317,7 @@ class FailedSource extends SourceBase {
   }
 }
 
-class StdSource extends SourceBase {
+private class StdSource extends SourceBase {
   
   var name:String;
   var target:Input;
@@ -358,7 +350,7 @@ class StdSource extends SourceBase {
 
 }
 
-class CompoundSource extends SourceBase {
+private class CompoundSource extends SourceBase {
   var parts:Array<Source>;
   public function new(parts)
     this.parts = parts;
@@ -366,6 +358,24 @@ class CompoundSource extends SourceBase {
   override public function append(other:Source):Source 
     return of(this, other);
     
+  override public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> {
+    return Future.async(function (cb) {
+      function next()
+        switch parts {
+          case []: cb(AllWritten);
+          case v: 
+            parts[0].pipeTo(dest).handle(function (x) switch x {
+              case AllWritten:
+                parts.shift();
+                next();
+              default:
+                cb(x);
+            });
+        };
+        
+      next();
+    });
+  }
   override public function close():Surprise<Noise, Error> {
 		if (parts.length == 0) return Future.sync(Success(Noise));
 		var ret = Future.ofMany([
@@ -390,7 +400,7 @@ class CompoundSource extends SourceBase {
       }
     });
   }
-  //TODO: override pipeTo here to get better throughput
+  
   override public function read(into:Buffer):Surprise<Progress, Error>
 		return switch parts {
 			case []: 

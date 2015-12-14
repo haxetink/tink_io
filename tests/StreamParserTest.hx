@@ -58,6 +58,28 @@ class StreamParserTest extends TestCase {
       
     return str;
   }
+  
+  function testParseWhile() {
+    var str = 'hello world !!! how are you ??? ignore all this';
+    
+    var source:Source = str,
+        a = [];
+    source.parseWhile(new UntilSpace(), function (x) return Future.sync(a.push(x) < 7)).handle(function (x) {
+      assertTrue(x.isSuccess());
+      assertEquals('hello world !!! how are you ???', a.join(' '));
+    });
+    
+  }
+  
+  function testStreaming() {
+    var str = 'hello world !!! how are you ??? ignore all this';
+    
+    var source:Source = str;
+    source.parseStream(new UntilSpace()).fold('', function (ret, x) return '$ret-$x').handle(function (x) {
+      assertEquals(' $str'.split(' ').join('-'), x.sure());
+    });
+  }
+  
   function testSplitSpeed() {
     var chunk = chunk(),
         delim = '-123456789-';
@@ -98,26 +120,6 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function testParseWhile() {
-    var str = 'hello world !!! how are you ??? ignore all this';
-    
-    var source:Source = str,
-        a = [];
-    source.parseWhile(new UntilSpace(), function (x) return Future.sync(a.push(x) < 7)).handle(function (x) {
-      assertTrue(x.isSuccess());
-      assertEquals('hello world !!! how are you ???', a.join(' '));
-    });
-    
-  }
-  
-  function testStreaming() {
-    var str = 'hello world !!! how are you ??? ignore all this';
-    
-    var source:Source = str;
-    source.parseStream(new UntilSpace()).fold('', function (a, b) return '$b-$a').handle(function (x) {
-      assertEquals(' $str'.split(' ').join('-'), x.sure());
-    });
-  }
 }
 
 private class UntilSpace extends ByteWiseParser<String> {

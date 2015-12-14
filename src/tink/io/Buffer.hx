@@ -84,31 +84,6 @@ class Buffer {
 	public function toString() 
 		return '[Buffer $available/$size]';
 	
-	public inline function hasNext():Bool
-		return available > 0;
-		
-	public inline function next():Int {
-		var ret = Bytes.fastGet(raw, zero++);
-		available--;
-		if (zero >= bytes.length)
-			zero -= bytes.length;
-		return ret;
-	}
-	
-  /**
-   * Attempts adding a byte.
-   * 
-   * Returns EOF if the buffer is sealed.
-   * Returns NONE if the buffer is full.
-   */
-	public function addByte(byte:Int):Progress {
-		if (!writable) return Progress.EOF;
-    if (freeBytes == 0) return Progress.NONE;
-		bytes.set(end, byte);
-		available++;
-		return Progress.by(1);
-	}
-	
 	function safely(operation:String, f:Void->Progress):Outcome<Progress, Error>
 		return
 			try 

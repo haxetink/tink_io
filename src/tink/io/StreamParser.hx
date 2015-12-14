@@ -31,6 +31,7 @@ class Splitter implements StreamParser<Bytes> {
   
   public function new(delim) {
     this.delim = delim;
+    //reset();
   }
   
   function reset() {
@@ -87,10 +88,12 @@ class Splitter implements StreamParser<Bytes> {
 
 class ByteWiseParser<Result> implements StreamParser<Result> {
 	
+  var result:Outcome<Option<Result>, Error>;
   var resume:Outcome<Option<Result>, Error>;
 	
-	public function new() 
+	public function new() {
     resume = Success(None);
+  }
 	
   public function minSize():Int
     return 1;
@@ -108,19 +111,27 @@ class ByteWiseParser<Result> implements StreamParser<Result> {
 				default:
 					Failure(new Error(UnprocessableEntity, 'Unexpected end of input'));
 			}		
-	
-	public function progress(buffer:Buffer):Outcome<Option<Result>, Error> {
-		
-		for (c in buffer) 
-			switch read(c) {
+      
+  function writeBytes(bytes:Bytes, start:Int, length:Int) {
+    var data = bytes.getData();
+    
+		for (pos in start ... start + length) 
+			switch read(Bytes.fastGet(data, pos)) {
 				case Progressed:
 				case Failed(e):
-					return Failure(e);
+					result = Failure(e);
+          return pos - start + 1;
 				case Done(r):
-					return Success(Some(r));
-			}
-    
-		return resume;
-	}
+          result = Success(Some(r));
+          return pos - start + 1;
+			}    
+      
+    return length;
+  }
 	
+	public function progress(buffer:Buffer):Outcome<Option<Result>, Error> {
+    result = resume;
+    buffer.writeTo(this);
+    return result;
+  }
 }

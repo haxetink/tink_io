@@ -12,23 +12,39 @@ class BufferTest extends TestCase {
 				written = 0;
 				
 		function write(num:Int)
-			for (i in 0...num) {
-				var byte = Std.random(0x100);
-				assertTrue(buffer.addByte(byte));
-				history.push(byte);
-				written++;
-			}
+      buffer.readFrom({
+        readBytes: function (into:Bytes, start, length) {
+          if (num > length)
+            num = length;
+          for (i in 0...num) {
+            var byte = Std.random(0x100);
+            into.set(start + i, byte);
+            history.push(byte);
+          }
+          written += num;
+          return num;
+        }
+      });
 			
 		function read(num:Int)
-			for (i in 0...num) {
-				assertTrue(buffer.hasNext());
-				assertEquals(history.shift(), buffer.next());
-			}
+      buffer.writeTo({
+        writeBytes: function (bytes, start, len) {
+          //assertTrue(len >= num);
+          if (num > len)
+            num = len;
+          for (i in 0...num) {
+            assertEquals(history.shift(), bytes.get(start + i));
+          }
+          return num;
+        }
+      });
+
 			
 		while (written < buffer.size << 3) {
 			write(Std.random(buffer.freeBytes));
 			read(Std.random(buffer.available));
 		}
+		read(buffer.available);
 		read(buffer.available);
 		assertEquals(0, buffer.available);
 		
@@ -41,14 +57,20 @@ class BufferTest extends TestCase {
 					written = 0,
 					bytesRead = 0;
 					
-			function write(num:Int)
-				for (i in 0...num) {
-					var byte = written % 203;
-					if (buffer.addByte(byte)) {
-						history.push(byte);
-						written++;
-					}
-				}
+      function write(num:Int)
+        buffer.readFrom({
+          readBytes: function (into:Bytes, start, length) {
+            if (num > length)
+              num = length;
+            for (i in 0...num) {
+              var byte = Std.random(0x100);
+              into.set(start + i, byte);
+              history.push(byte);
+            }
+            written += num;
+            return num;
+          }
+        });
 				
 			function read(num:Int)
 				buffer.writeTo( {
@@ -101,12 +123,19 @@ class BufferTest extends TestCase {
 					}
 				});
 				
-			function read(num:Int)
-				for (i in 0...num) {
-					assertTrue(buffer.hasNext());
-					assertEquals(history.shift(), buffer.next());
-					bytesRead++;
-				}
+		function read(num:Int)
+      buffer.writeTo({
+        writeBytes: function (bytes, start, len) {
+          //assertTrue(len >= num);
+          if (num > len)
+            num = len;
+          for (i in 0...num) {
+            assertEquals(history.shift(), bytes.get(start + i));
+          }
+          bytesRead += num;
+          return num;
+        }
+      });
 				
 			while (written < buffer.size << 3) {
 				write(Std.random(buffer.freeBytes));			
