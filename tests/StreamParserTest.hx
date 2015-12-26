@@ -5,11 +5,35 @@ import haxe.Timer;
 import haxe.unit.TestCase;
 import tink.io.*;
 import tink.io.StreamParser;
+import tink.io.Pipe;
 
 using tink.CoreApi;
 
 class StreamParserTest extends TestCase {
-  function testSingleSteps() {
+  
+  function testLimit() {
+    
+    var s = 'abcdefghijklmnopqrstuvwxyz123456';
+    
+    for (i in 0...16)
+      s += s;
+    
+    for (i in 18...23) {
+      var size = 1 << i;
+      var out = new BytesOutput();
+      (s : Source).limit(size).pipeTo(Sink.ofOutput('mem', out, Worker.EAGER)).handle(function (x) {
+        var read = out.getBytes().length;
+        assertEquals(AllWritten, x);
+        if (size > s.length) 
+          assertEquals(s.length, read);
+        else 
+          assertEquals(size, read);
+      });
+    }
+      
+  }
+  
+  function _testSingleSteps() {
     var source:Source = 'hello  world\t \r!!!';
     source.parse(new UntilSpace()).handle(function (x) {
       var x = x.sure();
@@ -22,7 +46,7 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function testSplit() {
+  function _testSplit() {
     var str = 'hello !!! world !!!!! !!! !!';
     var source:Source = str,
         a = [];
@@ -32,7 +56,7 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function testSingleSplit() {
+  function _testSingleSplit() {
     var c = chunk();
     var delim = '---12345-67890---';
     var s = '$c$delim$c$delim$c';
@@ -59,7 +83,7 @@ class StreamParserTest extends TestCase {
     return str;
   }
   
-  function testParseWhile() {
+  function _testParseWhile() {
     var str = 'hello world !!! how are you ??? ignore all this';
     
     var source:Source = str,
@@ -71,7 +95,7 @@ class StreamParserTest extends TestCase {
     
   }
   
-  function testStreaming() {
+  function _testStreaming() {
     var str = 'hello world !!! how are you ??? ignore all this';
     
     var source:Source = str;
@@ -80,7 +104,7 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function testSplitSpeed() {
+  function _testSplitSpeed() {
     var chunk = chunk(),
         delim = '-123456789-';
     

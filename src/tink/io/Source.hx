@@ -21,6 +21,10 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     return new NodeSource(r, name);
   #end
   
+  public function limit(length:Int):Source {
+    return new LimitedSource(this, length);
+  }
+  
   static public function async(f, close) 
     return new AsyncSource(f, close);
   
@@ -233,6 +237,68 @@ class SourceBase implements SourceObject {
   }
 }
 
+private class LimitedSource extends SourceBase {
+  
+  var max:Int;
+  var bytesRead = 0;
+  var target:Source;
+  var surplus = 0;
+  
+  public function new(target, max) {
+    this.target = target;
+    this.max = max;
+  }
+  
+  function fake(data:Bytes, pos:Int, len:Int):Int {
+    if (len > surplus)
+      len = surplus;
+    surplus -= len;
+    return len;
+  }
+  
+	function writeBytes(from:Bytes, pos:Int, len:Int):Int
+    return fake(from, pos, len);
+  
+	function readBytes(into:Bytes, pos:Int, len:Int):Int
+    return fake(into, pos, len);
+  
+  override public function read(into:Buffer):Surprise<Progress, Error> 
+    return 
+      if (bytesRead >= max) 
+        Future.sync(Success(Progress.EOF));
+      else
+        Future.async(function (cb) {
+          var left = max - bytesRead;
+          
+          var surplus = 
+            if (left < into.freeBytes) 
+              into.freeBytes - left;
+            else 0;
+            
+          this.surplus = surplus;
+          
+          while (this.surplus > 0)
+            into.readFrom(this);
+            
+          target.read(into).handle(function (o) {
+            
+            this.surplus = surplus;
+            
+            while (this.surplus > 0)
+              into.writeTo(this);
+              
+            switch o {
+              case Success(p):
+                bytesRead += p.bytes;              
+              default:
+            }
+            
+            cb(o);
+          });
+        });
+  
+}
+
 private class ParsingStream<T> {//TODO: this still has some logic now moved out to tink_streams. Try to leverage that.
   
   var nextStep:FutureTrigger<StreamStep<T>>;
@@ -358,6 +424,7 @@ private class CompoundSource extends SourceBase {
   override public function append(other:Source):Source 
     return of(this, other);
     
+  /*//TODO: figure out why the code below does not work:
   override public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> {
     return Future.async(function (cb) {
       function next()
@@ -366,16 +433,18 @@ private class CompoundSource extends SourceBase {
           case v: 
             parts[0].pipeTo(dest).handle(function (x) switch x {
               case AllWritten:
+                trace(parts);
                 parts.shift();
                 next();
               default:
+                trace(x);
                 cb(x);
             });
         };
         
       next();
     });
-  }
+  }*/
   override public function close():Surprise<Noise, Error> {
 		if (parts.length == 0) return Future.sync(Success(Noise));
 		var ret = Future.ofMany([

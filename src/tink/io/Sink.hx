@@ -232,8 +232,8 @@ class ParserSink<T> extends SinkBase {
               state;
             }
             else {
-              
               var last = from.available;
+              
               if (last == 0 && !from.writable)
                 switch parser.eof() {
                   case Success(v):
@@ -271,7 +271,7 @@ class ParserSink<T> extends SinkBase {
       Pipe.make(s, this, Buffer.allocMin(2 * parser.minSize())).handle(function (res) 
         cb(switch res {
           case AllWritten:
-            Success((Empty.instance : Source));
+            Success(s);
           case SinkEnded(rest):
             Success(s.prepend((rest.content() : Source)));
           case SinkFailed(e, _):

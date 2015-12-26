@@ -67,6 +67,9 @@ class Empty extends IdealSourceBase {
   
   override public function closeSafely()
     return Future.sync(Noise);
+    
+  public function toString()
+    return '[Empty source]';
   
   static public var instance(default, null):Empty = new Empty();
 }
