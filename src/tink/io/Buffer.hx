@@ -2,9 +2,15 @@ package tink.io;
 
 import haxe.io.*;
 import haxe.io.Error in IoError;
-import tink.concurrent.Queue;
 
 using tink.CoreApi;
+
+private typedef Pool = 
+  #if tink.concurrent
+    tink.concurrent.Queue<Bytes>;
+  #else
+    List<Bytes>;
+  #end
 
 typedef WritesBytes = { 
 	private function writeBytes(from:Bytes, pos:Int, len:Int):Int; 
@@ -274,7 +280,7 @@ class Buffer {
   static inline var MIN_WIDTH = 10;
   static inline var MAX_WIDTH = 28;
   
-  static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) new Queue<Bytes>()];
+  static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) new Pool()];
   
   static public function unmanaged(bytes:Bytes) {
     return new Buffer(bytes, -1);
