@@ -40,7 +40,7 @@ class NodeSink extends SinkBase {
       function (from:Buffer) { 
         var bytes = from.content();
         var progress = from.writeTo( { writeBytes: function (b, pos, len) return len } );
-        var native = untyped global.Buffer(bytes.getData());//TODO: find a nicer way to do this
+        var native = @:privateAccess js.node.Buffer.hxFromBytes(bytes);
         return 
           if (progress.isEof || target.write(native)) 
             Future.sync(Success(progress));
