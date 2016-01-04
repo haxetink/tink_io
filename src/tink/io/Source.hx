@@ -8,8 +8,7 @@ import tink.io.Pipe;
 import tink.io.Sink;
 import tink.io.StreamParser;
 import tink.io.Worker;
-import tink.streams.Stream;
-import tink.streams.StreamStep;
+import tink.streams.*;
 
 using tink.CoreApi;
 
@@ -424,8 +423,7 @@ private class CompoundSource extends SourceBase {
   override public function append(other:Source):Source 
     return of(this, other);
     
-  /*//TODO: figure out why the code below does not work:
-  override public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> {
+  override public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> 
     return Future.async(function (cb) {
       function next()
         switch parts {
@@ -433,18 +431,16 @@ private class CompoundSource extends SourceBase {
           case v: 
             parts[0].pipeTo(dest).handle(function (x) switch x {
               case AllWritten:
-                trace(parts);
-                parts.shift();
+                parts.shift().close();
                 next();
               default:
-                trace(x);
                 cb(x);
             });
         };
         
       next();
     });
-  }*/
+  
   override public function close():Surprise<Noise, Error> {
 		if (parts.length == 0) return Future.sync(Success(Noise));
 		var ret = Future.ofMany([
