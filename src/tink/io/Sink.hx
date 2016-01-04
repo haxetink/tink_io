@@ -26,11 +26,31 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
   
   static public function ofOutput(name:String, target:Output, ?worker:Worker):Sink
     return new StdSink(name, target, worker);
+  
+  static public var stdout(default, null):Sink =
+    #if nodejs
+      ofNodeStream(js.Node.process.stdout, 'stdout')
+    #elseif sys
+      ofOutput('stdout', Sys.stdout())
+    #else
+      BlackHole.INST;
+    #end
+  ;
+}
+
+private class SimpleOutput extends Output {
+  var writer:Int->Void;
+  
+  public function new(writer)
+    this.writer = writer;
     
+  override public function writeByte(c:Int):Void {
+    writer(c);
+  }
 }
 
 #if nodejs
-class NodeSink extends SinkBase {
+class NodeSink extends AsyncSink {
   var target:js.node.stream.Writable.IWritable;
   var name:String;
   public function new(target, name) {
