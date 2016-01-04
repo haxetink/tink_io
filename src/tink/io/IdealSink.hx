@@ -3,6 +3,7 @@ package tink.io;
 import tink.core.Future;
 import tink.io.Buffer;
 import tink.io.IdealSink;
+import tink.io.Progress;
 import tink.io.Sink;
 
 using tink.CoreApi;
@@ -15,6 +16,20 @@ abstract IdealSink(IdealSinkObject) from IdealSinkObject to IdealSinkObject to S
 interface IdealSinkObject extends SinkObject {
   function writeSafely(from:Buffer):Future<Progress>;
   function closeSafely():Future<Noise>;
+}
+
+class BlackHole extends IdealSinkBase {
+  
+  static public var INST(default, null):IdealSink = new BlackHole();
+  
+  function new() {}
+  
+  function writeBytes(_, _, len) 
+    return len;
+  
+  override public function writeSafely(from:Buffer):Future<Progress>
+    return Future.sync(from.writeTo(this));
+    
 }
 
 class IdealizedSink extends IdealSinkBase {
