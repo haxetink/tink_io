@@ -20,7 +20,7 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
   @:from static function fromString(s:String):IdealSource
     return 
       if (s == null) (Empty.instance : IdealSourceObject);
-      else ofBytes(Bytes.ofString(s));
+      else ofBytes(Bytes.ofString(s));//TODO: use direct conversion where available
   
   static public function create():SyntheticIdealSource
     return new SyntheticIdealSource();
