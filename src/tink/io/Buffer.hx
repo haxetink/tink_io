@@ -5,13 +5,6 @@ import haxe.io.Error in IoError;
 
 using tink.CoreApi;
 
-private typedef Pool = 
-  #if tink.concurrent
-    tink.concurrent.Queue<Bytes>;
-  #else
-    List<Bytes>;
-  #end
-
 typedef WritesBytes = { 
 	private function writeBytes(from:Bytes, pos:Int, len:Int):Int; 
 }
@@ -219,9 +212,10 @@ class Buffer {
     
 	static public var ZERO_BYTES(default, null) = Bytes.alloc(0);
   
-  static function poolBytes(b:Bytes, width:Int) 
+  static function poolBytes(b:Bytes, width:Int) {
     if (width >= MIN_WIDTH)
-      pool[width - MIN_WIDTH].add(b);
+      mutex.synchronized(function () pool[width - MIN_WIDTH].push(b));
+  }
   
 	function dispose() 
 		if (size > 0) {
@@ -258,9 +252,10 @@ class Buffer {
     return new Buffer(allocBytes(width), width);
   }
   
-  static public function allocBytes(width:Int)
+  
+  static function allocBytes(width:Int)
     return 
-      switch pool[width - MIN_WIDTH].pop() {
+      switch mutex.synchronized(pool[width - MIN_WIDTH].pop) {
         case null: Bytes.alloc(1 << width);
         case v: v;
       }
@@ -280,9 +275,19 @@ class Buffer {
   static inline var MIN_WIDTH = 10;
   static inline var MAX_WIDTH = 28;
   
-  static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) new Pool()];
+  static var mutex = new Mutex();
+  static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) []];
   
   static public function unmanaged(bytes:Bytes) {
     return new Buffer(bytes, -1);
   }
 }
+
+#if tink_concurrent
+private typedef Mutex = tink.concurrent.Mutex;
+#else
+private class Mutex {
+  public function new() { }
+  public inline function synchronized<A>(f:Void->A) return f();
+}
+#end
