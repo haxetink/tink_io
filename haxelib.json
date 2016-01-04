@@ -1,22 +1,22 @@
 {
-  "name": "tink_io",
-  "license": "MIT",
-  "tags": [
-    "tink",
-    "cross",
-    "io",
-    "async"
-  ],
-  "classPath": "src",
-  "description": "Asynchronous I/O everywhere",
-  "contributors": [
-    "back2dos"
-  ],
-  "releasenote": "First haxelib release.",
-  "version": "0.0.0",
-  "url": "http://haxetink.org/tink_io",
-  "dependencies": {
-    "tink_core": "*",
-    "tink_streams": "*"
-  }
+	"name": "tink_io",
+	"license": "MIT",
+	"tags": [
+		"tink",
+		"cross",
+		"io",
+		"async"
+	],
+	"classPath": "src",
+	"description": "Asynchronous I/O everywhere",
+	"contributors": [
+		"back2dos"
+	],
+	"releasenote": "First haxelib release.",
+	"version": "0.0.0",
+	"url": "http://haxetink.org/tink_io",
+	"dependencies": {
+		"tink_streams": "*",
+		"tink_core": "*"
+	}
 }
