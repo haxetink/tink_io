@@ -31,6 +31,7 @@ class Pipe {
 	function read()
 		source.read(buffer).handle(function (o) switch o {
 			case Success(_.isEof => true):
+        source.close();
         buffer.seal();
 				flush();
 			case Success(v):
@@ -56,10 +57,16 @@ class Pipe {
   
   static var queue = [];
   
-  static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?bytes):Future<PipeResult<In, Out>> {
-		var p = new Pipe(from, to, bytes);
+  static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?buffer):Future<PipeResult<In, Out>> {
+		var p = new Pipe(from, to, buffer);
     p.read();
-		return cast p.result.asFuture();    
+		var ret = p.result.asFuture();    
+    
+    ret.handle(function () {
+      @:privateAccess p.buffer.dispose();
+    });
+      
+    return cast ret;
   }
 }
 
