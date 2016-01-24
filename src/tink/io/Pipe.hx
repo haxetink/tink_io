@@ -25,7 +25,7 @@ class Pipe {
 		
   }
   
-  function yield(s)
+  function terminate(s)
     result.trigger(s);
   
 	function read()
@@ -37,13 +37,13 @@ class Pipe {
 			case Success(v):
         flush();
 			case Failure(e):
-        yield(SourceFailed(e));
+        terminate(SourceFailed(e));
 		});
     
 	function flush() {
 		dest.write(buffer).handle(function (o) switch o {
 			case Success(_.isEof => true):
-        yield(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
+        terminate(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
 			case Success(v):
 				if (buffer.writable) //TODO: find a good threshold
 					read();
@@ -51,7 +51,7 @@ class Pipe {
 					flush();
 			case Failure(f):
 				source.close();
-        yield(SinkFailed(f, buffer));
+        terminate(SinkFailed(f, buffer));
 		});
 	}	
   
