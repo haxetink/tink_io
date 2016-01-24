@@ -5,12 +5,17 @@ using tink.CoreApi;
 abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   
   static public var EAGER(default, null):Worker = new EagerWorker();
-  static public var DEFAULT(default, null):Lazy<Worker> = 
-    #if tink_runloop
-      function () return new RunLoopWorkerPool(16); 
-    #else
-      EAGER;
-    #end
+  static public var DEFAULT(get, null):Worker;
+    static function get_DEFAULT() {
+      if (DEFAULT == null)
+        DEFAULT =  
+          #if tink_runloop
+            new RunLoopWorkerPool(16);
+          #else
+            EAGER;
+          #end
+      return DEFAULT;
+    }
   
   public inline function work<A>(task:Lazy<A>):Future<A> {
     if (this == null)
