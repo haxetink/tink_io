@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "First haxelib release.",
-	"version": "0.0.1",
+	"releasenote": "Improved Java and PHP support.",
+	"version": "0.0.2",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
