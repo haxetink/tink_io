@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Improved Java and PHP support.",
-	"version": "0.0.2",
+	"releasenote": "Workaround haxe/php issues.",
+	"version": "0.0.3",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
