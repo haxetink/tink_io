@@ -228,7 +228,6 @@ class SourceBase implements SourceObject {
   public function split(delim:Bytes):{ first:Source, then:Source } {
     //TODO: implement this in a streaming manner
     var f = parse(new Splitter(delim));
-    
     return {
       first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
       then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
