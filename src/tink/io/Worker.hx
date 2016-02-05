@@ -17,12 +17,10 @@ abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
       return DEFAULT;
     }
   
-  public inline function work<A>(task:Lazy<A>):Future<A> {
-    if (this == null)
-      this = DEFAULT;
-    
-    return this.work(task);
-  }
+  public inline function work<A>(task:Lazy<A>):Future<A>
+    return 
+      if (this == null) DEFAULT.work(task);
+      else this.work(task);
   
   #if tink_runloop
   @:from static function ofRunLoopWorker(worker):Worker
