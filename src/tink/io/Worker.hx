@@ -19,7 +19,7 @@ abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   
   public inline function work<A>(task:Lazy<A>):Future<A>
     return 
-      if (this == null) DEFAULT.work(task);
+      if (this == null) Worker.get_DEFAULT().work(task);//TODO: this is quite ugly
       else this.work(task);
   
   #if tink_runloop
