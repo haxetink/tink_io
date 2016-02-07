@@ -47,7 +47,7 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
 private class SimpleSource extends SourceBase {
   
   var closer:Void->Surprise<Noise, Error>;
-  var reader:Buffer->Surprise<Progress, Error>;
+  var reader:Buffer->Int->Surprise<Progress, Error>;
   
   public function new(reader, ?closer) {
     this.reader = reader;
@@ -59,14 +59,14 @@ private class SimpleSource extends SourceBase {
       if (this.closer == null) super.close();
       else closer();
   
-  override public function read(into:Buffer):Surprise<Progress, Error>
-    return reader(into);
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+    return reader(into, max);
     
 }
 
 interface SourceObject {
     
-  function read(into:Buffer):Surprise<Progress, Error>;
+  function read(into:Buffer, ?max:Int = 1 << 30):Surprise<Progress, Error>;
   function close():Surprise<Noise, Error>;
   
   function prepend(other:Source):Source;
@@ -181,9 +181,9 @@ private class AsyncSource extends SourceBase {
     f(onData, onEnd);
   }
     
-  override public function read(into:Buffer):Surprise<Progress, Error>
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
     return 
-      data.read(into) || onError;
+      data.read(into, max) || onError;
   
   override public function close():Surprise<Noise, Error> {
     _close();  
@@ -203,7 +203,7 @@ class SourceBase implements SourceObject {
   public function append(other:Source):Source
     return CompoundSource.of(this, other);
     
-  public function read(into:Buffer):Surprise<Progress, Error>
+  public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
     return throw 'not implemented';
   
   public function close():Surprise<Noise, Error>
@@ -237,61 +237,30 @@ class SourceBase implements SourceObject {
 
 private class LimitedSource extends SourceBase {
   
-  var max:Int;
+  var limit:Int;
   var bytesRead = 0;
   var target:Source;
   var surplus = 0;
   
-  public function new(target, max) {
+  public function new(target, limit) {
     this.target = target;
-    this.max = max;
+    this.limit = limit;
   }
   
-  function fake(data:Bytes, pos:Int, len:Int):Int {
-    if (len > surplus)
-      len = surplus;
-    surplus -= len;
-    return len;
-  }
-  
-	function writeBytes(from:Bytes, pos:Int, len:Int):Int
-    return fake(from, pos, len);
-  
-	function readBytes(into:Bytes, pos:Int, len:Int):Int
-    return fake(into, pos, len);
-  
-  override public function read(into:Buffer):Surprise<Progress, Error> 
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error> 
     return 
-      if (bytesRead >= max) 
+      if (bytesRead >= limit) 
         Future.sync(Success(Progress.EOF));
       else
         Future.async(function (cb) {
-          var left = max - bytesRead;
-          
-          var surplus = 
-            if (left < into.freeBytes) 
-              into.freeBytes - left;
-            else 0;
-            
-          this.surplus = surplus;
-          
-          while (this.surplus > 0)
-            into.readFrom(this);
-            
-          target.read(into).handle(function (o) {
-            
-            this.surplus = surplus;
-            
-            while (this.surplus > 0)
-              into.writeTo(this);
-              
-            switch o {
-              case Success(p):
-                bytesRead += p.bytes;              
+          if (max > limit - bytesRead)
+            max = limit - bytesRead;
+          target.read(into, max).handle(function (x) {
+            switch x {
+              case Success(p): bytesRead += p.bytes;
               default:
             }
-            
-            cb(o);
+            cb(x);
           });
         });
   
@@ -353,8 +322,8 @@ private class FutureSource extends SourceBase {
   public function new(s)
     this.s = s;
     
-  override public function read(into:Buffer):Surprise<Progress, Error>
-    return s >> function (s:Source) return s.read(into);
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+    return s >> function (s:Source) return s.read(into, max);
     
   override public function close():Surprise<Noise, Error>
     return s >> function (s:Source) return s.close();
@@ -373,7 +342,7 @@ private class FailedSource extends SourceBase {
   public function new(error)
     this.error = error;
     
-  override public function read(into:Buffer)
+  override public function read(into:Buffer, ?max = 1 << 30)
     return Future.sync(Failure(error));      
     
   override public function close() {
@@ -393,8 +362,8 @@ private class StdSource extends SourceBase {
     this.worker = worker;
   }
     
-  override public function read(into:Buffer):Surprise<Progress, Error>
-    return worker.work(function () return into.tryReadingFrom(name, target));
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+    return worker.work(function () return into.tryReadingFrom(name, target, max));
   
   override public function close() {
     return 
@@ -465,7 +434,7 @@ private class CompoundSource extends SourceBase {
     });
   }
   
-  override public function read(into:Buffer):Surprise<Progress, Error>
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
 		return switch parts {
 			case []: 
 				Future.sync(Success(Progress.EOF));
@@ -474,7 +443,7 @@ private class CompoundSource extends SourceBase {
 					function (o) return switch o {
 						case Success(_.isEof => true):
               parts.shift().close();
-							read(into);//Technically a huge array of empty synchronous sources could cause a stack overflow, but let's be optimistic for once!
+							read(into, max);//Technically a huge array of empty synchronous sources could cause a stack overflow, but let's be optimistic for once!
 						default:
 							Future.sync(o);
 					}
