@@ -10,9 +10,10 @@ class Pipe {
   var buffer:Buffer;
   var source:Source;
   var dest:Sink;
-	var result:FutureTrigger<PipeResult<Error, Error>>;
+  var result:FutureTrigger<PipeResult<Error, Error>>;
+  var onDone:Pipe->Void;
   
-  function new(source, dest, ?buffer) {
+  function new(source, dest, ?buffer, ?onDone) {
     
     if (buffer == null)
       buffer = Buffer.alloc(17);
@@ -22,11 +23,14 @@ class Pipe {
 		
 		this.buffer = buffer;
 		this.result = Future.trigger();
-		
+		this.onDone = onDone;
   }
   
-  function terminate(s)
+  function terminate(s) {
     result.trigger(s);
+    if (onDone != null)
+      onDone(this);
+  }
   
 	function read()
 		source.read(buffer).handle(function (o) switch o {
@@ -58,15 +62,11 @@ class Pipe {
   static var queue = [];
   
   static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?buffer):Future<PipeResult<In, Out>> {
-		var p = new Pipe(from, to, buffer);
-    p.read();
-		var ret = p.result.asFuture();    
-    
-    ret.handle(function () {
-      @:privateAccess p.buffer.dispose();
+		var p = new Pipe(from, to, buffer, function (p) {
+      @:privateAccess p.buffer.dispose();//TODO: this whole business should be less hacky
     });
-      
-    return cast ret;
+    p.read();
+		return cast p.result.asFuture();     
   }
 }
 
