@@ -29,7 +29,7 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
 
 interface IdealSourceObject extends SourceObject {
   function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>;
-  function readSafely(into:Buffer):Future<Progress>;
+  function readSafely(into:Buffer, ?max:Int = 1 << Buffer.MAX_WIDTH):Future<Progress>;
   function closeSafely():Future<Noise>;
 }
 
@@ -42,8 +42,8 @@ class IdealizedSource extends IdealSourceBase {
     this.onError = onError;
   }
   
-  override public function readSafely(into:Buffer):Future<Progress>  
-    return target.read(into).map(function (x) return switch x {
+  override public function readSafely(into:Buffer, ?max = 1 << Buffer.MAX_WIDTH):Future<Progress>  
+    return target.read(into, max).map(function (x) return switch x {
       case Success(v): v;
       case Failure(e): 
         onError.invoke(e);
@@ -62,7 +62,7 @@ class IdealizedSource extends IdealSourceBase {
 
 class Empty extends IdealSourceBase {
   function new() {}
-  override public function readSafely(into:Buffer):Future<Progress> 
+  override public function readSafely(into:Buffer, ?max = 1 << Buffer.MAX_WIDTH):Future<Progress> 
     return Future.sync(Progress.EOF);
   
   override public function closeSafely()
@@ -90,10 +90,10 @@ class SyntheticIdealSource extends IdealSourceBase {
     queue = [];
   }
   
-  function doRead(into:Buffer):Progress {
+  function doRead(into:Buffer, max):Progress {
     if (closed || buf.length == 0) return Progress.EOF;
     var src = buf[0];
-    var ret = into.readFrom(src);
+    var ret = into.readFrom(src, max);
     if (src.position == src.length)
       buf.shift();
     return ret;
@@ -105,18 +105,18 @@ class SyntheticIdealSource extends IdealSourceBase {
       closeSafely();
   }
   
-  override public function readSafely(into:Buffer):Future<Progress> {
+  override public function readSafely(into:Buffer, ?max = 1 << Buffer.MAX_WIDTH):Future<Progress> {
     if (closed)
       return Future.sync(Progress.EOF);
       
     if (buf.length > 0 || !writable) 
-      return Future.sync(doRead(into));
+      return Future.sync(doRead(into, max));
       
     var trigger = Future.trigger();
     
     queue.push(trigger);
     
-    return trigger.asFuture().map(function (_) return doRead(into));
+    return trigger.asFuture().map(function (_) return doRead(into, max));
   }
   
   public function write(bytes:Bytes):Bool {
@@ -148,7 +148,7 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
   override public function idealize(onError:Callback<Error>):IdealSource
     return this;
   
-  public function readSafely(into:Buffer):Future<Progress>  
+  public function readSafely(into:Buffer, ?max = 1 << Buffer.MAX_WIDTH):Future<Progress>  
     return throw 'abstract';
     
   public function closeSafely():Future<Noise>
@@ -157,7 +157,7 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
   override public inline function close() 
     return closeSafely().map(Success);
       
-  override public inline function read(into:Buffer) 
+  override public inline function read(into:Buffer, ?max = 1 << Buffer.MAX_WIDTH) 
     return readSafely(into).map(Success);
     
   public function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>
@@ -218,8 +218,8 @@ class ByteSource extends IdealSourceBase {
   public function toString()
     return '[Byte Source $pos/${data.length}]';
     
-  override public function readSafely(into:Buffer):Future<Progress>
-    return Future.sync(into.readFrom(this));
+  override public function readSafely(into:Buffer, ?max = 1 << Buffer.MAX_WIDTH):Future<Progress>
+    return Future.sync(into.readFrom(this, max));
   
   override public function closeSafely():Future<Noise> {
     data = Buffer.ZERO_BYTES;

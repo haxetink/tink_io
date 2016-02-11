@@ -33,7 +33,7 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
     #elseif sys
       ofOutput('stdout', Sys.stdout())
     #else
-      BlackHole.INST;
+      BlackHole.INST
     #end
   ;
 }
@@ -121,7 +121,10 @@ class StdSink extends SinkBase {
   }
     
   override public function write(from:Buffer):Surprise<Progress, Error> 
-    return worker.work(function () return from.tryWritingTo(name, target));
+    return 
+      worker.work(
+        function () return from.tryWritingTo(name, target)
+      );
   
   override public function close() {
     return 

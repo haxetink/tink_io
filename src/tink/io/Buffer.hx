@@ -109,14 +109,14 @@ class Buffer {
    * 
    * If the buffer handles an error, it is best to reset the destination to a known state, before attempting another write.
    */
-	public function tryWritingTo(name:String, dest:WritesBytes):Outcome<Progress, Error> 
-		return safely('Failed writing to $name', writeTo.bind(dest));
+	public function tryWritingTo(name:String, dest:WritesBytes, ?max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
+    return safely('Failed writing to $name', writeTo.bind(dest, max));
 	
   /**
    * Reads from a source with error handling. See tryWritingTo
    */  
-	public function tryReadingFrom(name:String, source:ReadsBytes):Outcome<Progress, Error> 
-		return safely('Failed reading from $name', readFrom.bind(source));			
+	public function tryReadingFrom(name:String, source:ReadsBytes, ?max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
+    return safely('Failed reading from $name', readFrom.bind(source, max));			
 	
   /**
    * Writes contents of the buffer to the destination.
@@ -125,7 +125,7 @@ class Buffer {
    * 
    * Use only if you know the destination not to produce exceptions.
    */
-	public function writeTo(dest:WritesBytes):Progress {
+	public function writeTo(dest:WritesBytes, ?max = 1 << MAX_WIDTH):Progress {
 		
 		if (available == 0) 
 			return 
@@ -140,6 +140,12 @@ class Buffer {
 				bytes.length - zero;
 			else
 				available;
+        
+    if (max < 0)
+      max = 0;
+      
+    if (max < toWrite)
+      toWrite = max;
 		
 		var transfered = dest.writeBytes(bytes, zero, toWrite);
 		//if (zero + transfered == bytes.length)
@@ -188,7 +194,7 @@ class Buffer {
    * 
    * Use only if you know the source not to produce exceptions.
    */
-	public function readFrom(source:ReadsBytes):Progress {
+	public function readFrom(source:ReadsBytes, ?max = 1 << MAX_WIDTH):Progress {
 		if (!writable) return Progress.EOF;
 		if (available == size) return Progress.NONE;
 		
@@ -197,7 +203,13 @@ class Buffer {
 				freeBytes;
 			else
 				size - end;
-				
+        
+		if (max < 0)
+      max = 0;
+      
+    if (max < toRead)
+      toRead = max;
+		
 		var transfered = source.readBytes(bytes, end, toRead);
 		
 		//if (end + transfered == size)
@@ -272,8 +284,8 @@ class Buffer {
     
   }
   
-  static inline var MIN_WIDTH = 10;
-  static inline var MAX_WIDTH = 28;
+  static public inline var MIN_WIDTH = 10;
+  static public inline var MAX_WIDTH = 28;
   
   static var mutex = new Mutex();
   static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) []];
