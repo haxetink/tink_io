@@ -68,8 +68,8 @@ class Buffer {
 	public function content():Bytes {
 		return blitTo(Bytes.alloc(available));
 	}
-  
-  public function blitTo(ret:Bytes) {
+    
+  function blitTo(ret:Bytes) {
 		if (zero + available <= size) 
 			ret.blit(0, bytes, zero, available);
 		else {
