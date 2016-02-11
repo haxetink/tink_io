@@ -166,6 +166,7 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
 }
 
 class ByteSource extends IdealSourceBase {
+  //TODO: this is not optimal. It should rather have a whole hunk of bytes
   var data:Bytes;
   var pos:Int;
   
@@ -188,6 +189,32 @@ class ByteSource extends IdealSourceBase {
         len;
       }
   
+  override public function append(other:Source):Source
+    return 
+      switch Std.instance(other, ByteSource) {
+        case null: super.append(other);
+        case v: this.merge(v);
+      }
+      
+  override public function prepend(other:Source):Source
+    return 
+      switch Std.instance(other, ByteSource) {
+        case null: super.append(other);
+        case v: v.merge(this);
+      }
+      
+  function merge(that:ByteSource) {
+    
+    var l1 = this.data.length - this.pos,
+        l2 = that.data.length - that.pos;
+        
+    var bytes = Bytes.alloc(l1 + l2);
+    bytes.blit(0, this.data, this.pos, l1);
+    bytes.blit(l1, that.data, that.pos, l2);
+    
+    return new ByteSource(bytes, 0);
+  }
+      
   public function toString()
     return '[Byte Source $pos/${data.length}]';
     
