@@ -151,6 +151,15 @@ interface SinkObject {
    * - end of the sink itself
    */
 	function write(from:Buffer):Surprise<Progress, Error>;
+  /**
+   * Ends the sink with the contents of the supplied buffer.
+   * 
+   * The default implementation will actually just use write and close, 
+   * but some implementations may leverage pecularities of the underlying stream to optimize the procedure.
+   * 
+   * Note that if the sink ends on its own before all data is written, the buffer will contain any remaining data.
+   */
+  function finish(from:Buffer):Surprise<Noise, Error>;
 	function close():Surprise<Noise, Error>;  
   function idealize(onError:Callback<Error>):IdealSink;
 }
@@ -158,6 +167,35 @@ interface SinkObject {
 class SinkBase implements SinkObject {
 	public function write(from:Buffer):Surprise<Progress, Error>
     return throw 'writing not implemented';
+    
+  public function finish(from:Buffer):Surprise<Noise, Error>
+    return Future.async(function (cb) {
+      function flush() {
+        //trace(from.available);
+        if (from.available == 0) 
+          close().handle(cb);
+        else 
+          write(from).handle(function (o) switch o {
+            
+            case Success(p): 
+              trace(p);
+              if (p.isEof)
+                if (from.available == 0)
+                  close().handle(cb);
+                else
+                  cb(Success(Noise));
+              else
+                flush();
+                
+            case Failure(e): 
+              
+              cb(Failure(e));
+              
+          });
+      }
+      
+      flush();
+    });
     
 	public function close():Surprise<Noise, Error>
     return Future.sync(Success(Noise));

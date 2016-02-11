@@ -71,7 +71,7 @@ interface SourceObject {
   
   function prepend(other:Source):Source;
   function append(other:Source):Source;
-  function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>>;
+  function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>>;
   
   function idealize(onError:Callback<Error>):IdealSource;
   
@@ -134,8 +134,8 @@ class SourceBase implements SourceObject {
   public function close():Surprise<Noise, Error>
     return Future.sync(Success(Noise));
   
-  public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>>
-    return Pipe.make(this, dest);
+  public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>>
+    return Pipe.make(this, dest, options);
     
   public function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error> {
     var ret = null;
@@ -347,13 +347,13 @@ private class CompoundSource extends SourceBase {
   override public function append(other:Source):Source 
     return of(this, other);
     
-  override public function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> 
+  override public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>> 
     return Future.async(function (cb) {
       function next()
         switch parts {
           case []: cb(AllWritten);
           case v: 
-            parts[0].pipeTo(dest).handle(function (x) switch x {
+            parts[0].pipeTo(dest, if (parts.length == 1) options else null).handle(function (x) switch x {
               case AllWritten:
                 parts.shift().close();
                 next();

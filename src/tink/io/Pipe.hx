@@ -11,13 +11,15 @@ class Pipe {
   var source:Source;
   var dest:Sink;
   var result:FutureTrigger<PipeResult<Error, Error>>;
-  var onDone:Pipe->Void;
+  var onDone:Pipe-> Void;
+  var autoClose:Bool;
   
-  function new(source, dest, ?buffer, ?onDone) {
+  function new(source, dest, ?buffer, ?autoClose = false, ?onDone) {
     
     if (buffer == null)
       buffer = Buffer.alloc(17);
       
+    this.autoClose = autoClose;
 		this.source = source;
 		this.dest = dest;
 		
@@ -44,25 +46,37 @@ class Pipe {
         terminate(SourceFailed(e));
 		});
     
-	function flush() {
-		dest.write(buffer).handle(function (o) switch o {
-			case Success(_.isEof => true):
-        terminate(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
-			case Success(v):
-				if (buffer.writable) //TODO: find a good threshold
-					read();
-				else 
-					flush();
-			case Failure(f):
-				source.close();
-        terminate(SinkFailed(f, buffer));
-		});
-	}	
+	function flush(?repeat = 1) {
+    if (buffer.writable || !autoClose) {
+      dest.write(buffer).handle(function (o) switch o {
+        case Success(_.isEof => true):
+          terminate(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
+        case Success(v):
+          if (repeat > 0)
+            flush(repeat - 1);
+          else
+            if (buffer.writable) //TODO: find a good threshold
+              read();
+            else 
+              flush();
+        case Failure(f):
+          source.close();
+          terminate(SinkFailed(f, buffer));
+      });
+    }
+    else
+      dest.finish(buffer).handle(function (o) switch o {
+        case Success(_):
+          terminate(if (buffer.available > 0) SinkEnded(buffer) else AllWritten);
+        case Failure(f):
+          terminate(SinkFailed(f, buffer));
+      });
+  }
   
   static var queue = [];
   
-  static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?buffer):Future<PipeResult<In, Out>> {
-		var p = new Pipe(from, to, buffer, function (p) {
+  static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?buffer, ?options: { ?end: Bool }):Future<PipeResult<In, Out>> {
+		var p = new Pipe(from, to, buffer, options != null && options.end, function (p) {
       @:privateAccess p.buffer.dispose();//TODO: this whole business should be less hacky
     });
     p.read();

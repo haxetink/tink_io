@@ -44,30 +44,29 @@ class NodejsSource extends SourceBase {
   
   override public function read(into:Buffer):Surprise<Progress, Error> {
     if (rest == null) {
-      var chunk = target.read();
+      var chunk:js.node.Buffer = target.read();
       if (chunk == null)
         return end || Future.async(function (cb) 
           target.once('readable', function () cb(Noise))
         ).flatMap(function (_) return read(into));
         
-      rest = Bytes.ofData(cast chunk);
+      rest = chunk.hxToBytes();
       pos = 0;
     }
     
     return Future.sync(into.tryReadingFrom(name, this));
   }
   
-  override public function close():Surprise<Noise, Error> {
+  override public function close():Surprise<Noise, Error> 
     return Future.sync(Success(Noise));//TODO: implement
-  }
   
-  override function pipeTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Error, Out>> {
+  override function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>> {
     return 
       if (Std.is(dest, NodejsSink)) {
         var dest = (cast dest : NodejsSink);
         var writable = @:privateAccess dest.target;
         
-        target.pipe(writable, { end: false } );
+        target.pipe(writable, options );
         
         return Future.async(function (cb) {
           @:privateAccess dest.next({
