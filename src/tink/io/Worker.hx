@@ -5,18 +5,22 @@ using tink.CoreApi;
 abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   
   static public var EAGER(default, null):Worker = new EagerWorker();
-  static public var DEFAULT(default, null):Worker =
+  static var pool:Array<Worker> = 
     #if tink_runloop
-      new RunLoopWorkerPool(16);
+      [for (i in 0...#if concurrent 16 #else 1 #end) tink.RunLoop.current.createSlave()]
     #else
-      EAGER;
+      [EAGER]
     #end
+  ;
+  
+  public function ensure()
+    return if (this == null) get() else this;
+    
+  static public function get() 
+    return pool[Std.random(pool.length)];
     
   public function work<A>(task:Lazy<A>):Future<A>
-    return 
-      if (this == null) 
-        Worker.DEFAULT.work(task);
-      else this.work(task);
+    return this.work(task);
   
   #if tink_runloop
   @:from static function ofRunLoopWorker(worker):Worker
@@ -33,22 +37,6 @@ private class EagerWorker implements WorkerObject {
 }
 
 #if tink_runloop
-private class RunLoopWorkerPool implements WorkerObject {
-  var workers:Array<tink.runloop.Worker>;
-  var index:Int;
-  
-  public function new(size:Int)
-    index = size;
-  
-  public function work<A>(task:Lazy<A>):Future<A> {
-    if (workers == null)
-      workers = [for (i in 0...index) tink.RunLoop.current.createSlave()];
-    index = (index + 1) % workers.length;
-    return 
-      workers[0].owner.delegate(task, workers[index]);
-  }
-  
-}
 private class RunLoopWorker implements WorkerObject {
   
   var actualWorker:tink.runloop.Worker;

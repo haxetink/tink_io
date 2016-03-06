@@ -59,14 +59,14 @@ private class SimpleSource extends SourceBase {
       if (this.closer == null) super.close();
       else closer();
   
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
     return reader(into, max);
     
 }
 
 interface SourceObject {
     
-  function read(into:Buffer, ?max:Int = 1 << 30):Surprise<Progress, Error>;
+  function read(into:Buffer, max:Int = 1 << 30):Surprise<Progress, Error>;
   function close():Surprise<Noise, Error>;
   
   function all():Surprise<Bytes, Error>;
@@ -108,7 +108,7 @@ private class AsyncSource extends SourceBase {
     f(onData, onEnd);
   }
     
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
     return 
       data.read(into, max) || onError;
   
@@ -130,7 +130,7 @@ class SourceBase implements SourceObject {
   public function append(other:Source):Source
     return CompoundSource.of(this, other);
     
-  public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+  public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
     return throw 'not implemented';
   
   public function close():Surprise<Noise, Error>
@@ -164,13 +164,14 @@ class SourceBase implements SourceObject {
   public function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>
     return new ParsingStream(this, parser, rest).next;
     
-  public function split(delim:Bytes):{ first:Source, then:Source } {
+  public function split(delim:Bytes): { first:Source, then:Source } {
+    return null;
     //TODO: implement this in a streaming manner
-    var f = parse(new Splitter(delim));
-    return {
-      first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
-      then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
-    }
+    //var f = parse(new Splitter(delim));
+    //return {
+      //first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
+      //then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
+    //}
   }
 }
 
@@ -186,7 +187,7 @@ private class LimitedSource extends SourceBase {
     this.limit = limit;
   }
   
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error> 
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error> 
     return 
       if (bytesRead >= limit) 
         Future.sync(Success(Progress.EOF));
@@ -261,7 +262,7 @@ private class FutureSource extends SourceBase {
   public function new(s)
     this.s = s;
     
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
     return s >> function (s:Source) return s.read(into, max);
     
   override public function close():Surprise<Noise, Error>
@@ -281,7 +282,7 @@ private class FailedSource extends SourceBase {
   public function new(error)
     this.error = error;
     
-  override public function read(into:Buffer, ?max = 1 << 30)
+  override public function read(into:Buffer, max = 1 << 30)
     return Future.sync(Failure(error));      
     
   override public function close() {
@@ -295,13 +296,13 @@ private class StdSource extends SourceBase {
   var target:Input;
   var worker:Worker;
   
-  public function new(name, target, ?worker) {
+  public function new(name, target, ?worker:Worker) {
     this.name = name;
     this.target = target;
-    this.worker = worker;
+    this.worker = worker.ensure();
   }
     
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
     return worker.work(function () return into.tryReadingFrom(name, target, max));
   
   override public function close() {
@@ -373,7 +374,7 @@ private class CompoundSource extends SourceBase {
     });
   }
   
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
 		return switch parts {
 			case []: 
 				Future.sync(Success(Progress.EOF));

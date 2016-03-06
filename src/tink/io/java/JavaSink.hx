@@ -12,10 +12,10 @@ class JavaSink extends SinkBase {
   var name:String;
   var worker:Worker;
   
-  public function new(target, name, worker) {
+  public function new(target, name, ?worker:Worker) {
     this.target = target;
     this.name = name;
-    this.worker = worker;
+    this.worker = worker.ensure();
   }
   
   function writeBytes(into:Bytes, pos:Int, len:Int):Int 

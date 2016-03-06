@@ -109,13 +109,13 @@ class Buffer {
    * 
    * If the buffer handles an error, it is best to reset the destination to a known state, before attempting another write.
    */
-	public function tryWritingTo(name:String, dest:WritesBytes, ?max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
+	public function tryWritingTo(name:String, dest:WritesBytes, max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
     return safely('Failed writing to $name', writeTo.bind(dest, max));
 	
   /**
    * Reads from a source with error handling. See tryWritingTo
    */  
-	public function tryReadingFrom(name:String, source:ReadsBytes, ?max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
+	public function tryReadingFrom(name:String, source:ReadsBytes, max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
     return safely('Failed reading from $name', readFrom.bind(source, max));			
 	
   /**
@@ -125,7 +125,7 @@ class Buffer {
    * 
    * Use only if you know the destination not to produce exceptions.
    */
-	public function writeTo(dest:WritesBytes, ?max = 1 << MAX_WIDTH):Progress {
+	public function writeTo(dest:WritesBytes, max = 1 << MAX_WIDTH):Progress {
 		
 		if (available == 0) 
 			return 
@@ -194,7 +194,7 @@ class Buffer {
    * 
    * Use only if you know the source not to produce exceptions.
    */
-	public function readFrom(source:ReadsBytes, ?max = 1 << MAX_WIDTH):Progress {
+	public function readFrom(source:ReadsBytes, max = 1 << MAX_WIDTH):Progress {
 		if (!writable) return Progress.EOF;
 		if (available == size) return Progress.NONE;
 		

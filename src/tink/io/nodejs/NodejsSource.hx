@@ -42,7 +42,7 @@ class NodejsSource extends SourceBase {
     return length;
   }
   
-  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error> {
+  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error> {
     if (rest == null) {
       var chunk:js.node.Buffer = target.read();
       if (chunk == null)

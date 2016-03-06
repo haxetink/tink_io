@@ -132,10 +132,10 @@ class StdSink extends SinkBase {
   var target:Output;
   var worker:Worker;  
   
-  public function new(name, target, ?worker) {
+  public function new(name, target, ?worker:Worker) {
     this.name = name;
     this.target = target;
-    this.worker = worker;
+    this.worker = worker.ensure();
   }
     
   override public function write(from:Buffer):Surprise<Progress, Error> 
