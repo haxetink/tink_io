@@ -42,19 +42,19 @@ class NodejsSource extends SourceBase {
     return length;
   }
   
-  override public function read(into:Buffer):Surprise<Progress, Error> {
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error> {
     if (rest == null) {
       var chunk:js.node.Buffer = target.read();
       if (chunk == null)
         return end || Future.async(function (cb) 
           target.once('readable', function () cb(Noise))
-        ).flatMap(function (_) return read(into));
+        ).flatMap(function (_) return read(into, max));
         
-      rest = chunk.hxToBytes();
+      rest = Bytes.ofData(cast chunk);
       pos = 0;
     }
     
-    return Future.sync(into.tryReadingFrom(name, this));
+    return Future.sync(into.tryReadingFrom(name, this, max));
   }
   
   override public function close():Surprise<Noise, Error> 

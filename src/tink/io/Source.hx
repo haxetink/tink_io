@@ -15,7 +15,7 @@ using tink.CoreApi;
 @:forward
 abstract Source(SourceObject) from SourceObject to SourceObject {
     
-  #if nodejs
+  #if (nodejs && !macro)
   static public function ofNodeStream(r:js.node.stream.Readable.IReadable, name)
     return new tink.io.nodejs.NodejsSource(r, name);
   #end
@@ -68,6 +68,8 @@ interface SourceObject {
     
   function read(into:Buffer, ?max:Int = 1 << 30):Surprise<Progress, Error>;
   function close():Surprise<Noise, Error>;
+  
+  function all():Surprise<Bytes, Error>;
   
   function prepend(other:Source):Source;
   function append(other:Source):Source;
@@ -136,6 +138,18 @@ class SourceBase implements SourceObject {
   
   public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>>
     return Pipe.make(this, dest, options);
+    
+  public function all() {
+    var out = new BytesOutput();
+    return Future.async(function (cb) {
+      pipeTo(Sink.ofOutput('memory buffer', out)).handle(function (r) cb(switch r {
+        case SourceFailed(e): Failure(e);
+        case AllWritten: Success(out.getBytes());
+        default: throw 'assert';
+      }));
+    });
+  }
+  
     
   public function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error> {
     var ret = null;

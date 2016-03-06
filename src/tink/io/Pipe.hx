@@ -11,19 +11,20 @@ class Pipe {
   var source:Source;
   var dest:Sink;
   var result:FutureTrigger<PipeResult<Error, Error>>;
-  var onDone:Pipe-> Void;
+  var onDone:Pipe->Void;
   var autoClose:Bool;
+  var bufferWidth:Int;
   
-  function new(source, dest, ?buffer, ?autoClose = false, ?onDone) {
-    
-    if (buffer == null)
-      buffer = Buffer.alloc(17);
+  function new(source, dest, ?bufferWidth, ?autoClose = false, ?onDone) {
+          
+    this.bufferWidth = 
+      if (bufferWidth != null) bufferWidth;
+      else Buffer.DEFAULT_WIDTH;
       
     this.autoClose = autoClose;
 		this.source = source;
 		this.dest = dest;
 		
-		this.buffer = buffer;
 		this.result = Future.trigger();
 		this.onDone = onDone;
   }
@@ -34,6 +35,31 @@ class Pipe {
       onDone(this);
   }
   
+  static var suspended = 
+    #if tink_concurrent
+      new tink.concurrent.Queue();
+    #else
+      new List();
+    #end
+  
+  function suspend() {
+    if (this.bufferWidth > 0) 
+      switch suspended.pop() {
+        case null: read();
+        case next:
+          @:privateAccess this.buffer.dispose();
+          suspended.add(this);
+          next.resume();
+      }
+    else read();
+  }
+  
+  function resume() {
+    if (this.buffer == null)
+      this.buffer = Buffer.alloc(this.bufferWidth);
+    this.read();
+  }
+  
 	function read()
 		source.read(buffer).handle(function (o) switch o {
 			case Success(_.isEof => true):
@@ -41,7 +67,10 @@ class Pipe {
         buffer.seal();
 				flush();
 			case Success(v):
-        flush();
+        if (v == 0 && buffer.available == 0)
+          suspend();
+        else
+          flush();
 			case Failure(e):
         terminate(SourceFailed(e));
 		});
@@ -72,14 +101,15 @@ class Pipe {
           terminate(SinkFailed(f, buffer));
       });
   }
-  
-  static var queue = [];
-  
-  static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?buffer, ?options: { ?end: Bool }):Future<PipeResult<In, Out>> {
-		var p = new Pipe(from, to, buffer, options != null && options.end, function (p) {
-      @:privateAccess p.buffer.dispose();//TODO: this whole business should be less hacky
+    
+  static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?bufferWidth:Int, ?options: { ?end: Bool }):Future<PipeResult<In, Out>> {
+		var p = new Pipe(from, to, bufferWidth, options != null && options.end, function (p) {
+      if (p.buffer.width > 0) {
+        @:privateAccess p.buffer.dispose();//TODO: this whole business should be less hacky
+      }
     });
-    p.read();
+    //if (p.buffer == null)
+    p.resume();
 		return cast p.result.asFuture();     
   }
 }

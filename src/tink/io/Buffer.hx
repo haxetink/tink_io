@@ -16,7 +16,7 @@ typedef ReadsBytes = {
 class Buffer {
 	var bytes:Bytes;
 	var raw:BytesData;
-  var width:Int;
+  public var width(default, null):Int;
 	public var zero(default, null):Int = 0;
   public var retainCount(default, null) = 0;
   
@@ -239,21 +239,21 @@ class Buffer {
       poolBytes(old, width);
 		}
     
-  static public function allocMin(minSize:Int) {
+  static public function sufficientWidthFor(minSize:Int) {
     
-    if (minSize > 1 << 28)
+    if (minSize > 1 << MAX_WIDTH)
       'Cannot allocate buffer of size $minSize';
     
-    var width = 16;
+    var width = DEFAULT_WIDTH;
     var size = 1 << width;
     
     while (size < minSize) 
       size = 1 << ++width;
     
-    return alloc(width);
+    return width;
   }
   
-  static public function alloc(?width:Int = 17) {
+  static public function alloc(?width:Int = DEFAULT_WIDTH) {
     
     if (width < MIN_WIDTH)
       width = MIN_WIDTH;
@@ -285,13 +285,21 @@ class Buffer {
   }
   
   static public inline var MIN_WIDTH = 10;
+  static public inline var DEFAULT_WIDTH = 16;
   static public inline var MAX_WIDTH = 28;
   
   static var mutex = new Mutex();
   static var pool = [for (i in MIN_WIDTH...MAX_WIDTH) []];
   
-  static public function unmanaged(bytes:Bytes) {
+  static function unmanaged(bytes:Bytes) {
     return new Buffer(bytes, -1);
+  }
+  
+  static public function wrap(bytes:Bytes, start:Int, len:Int) {
+    var ret = Buffer.unmanaged(bytes);
+    ret.zero = start;
+    ret.available = len;
+    return ret;
   }
 }
 

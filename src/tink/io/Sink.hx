@@ -10,17 +10,46 @@ using tink.CoreApi;
 @:forward
 abstract Sink(SinkObject) to SinkObject from SinkObject {
   
-  #if nodejs
+  #if (nodejs && !macro)
   static public function ofNodeStream(w:js.node.stream.Writable.IWritable, name):Sink
     return new tink.io.nodejs.NodejsSink(w, name);
   #end
+  
+  public function writeFull(buffer:Buffer):Surprise<Bool, Error> {
+    var self = this;//something weird is going on here with `this` being lost in the scope below
+    return Future.async(function (cb) {
+      function flush() {
+        if (buffer.available == 0) 
+          
+          cb(Success(true));
+          
+        else 
+          self.write(buffer).handle(function (o) switch o {
+            
+            case Success(p): 
+              
+              if (p.isEof)
+                cb(Success(false));
+              else
+                flush();
+                
+            case Failure(e): 
+              
+              cb(Failure(e));
+              
+          });
+      }
+      
+      flush();
+    });    
+  }
   
   static public function inMemory() 
     return ofOutput('Memory sink', new BytesOutput(), Worker.EAGER);
   
   static public function async(writer, closer):Sink
     return new AsyncSink(writer, closer);
-  
+    
   @:from static public function flatten(s:Surprise<Sink, Error>):Sink
     return new FutureSink(s);
   
@@ -28,7 +57,7 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
     return new StdSink(name, target, worker);
   
   static public var stdout(default, null):Sink =
-    #if nodejs
+    #if (nodejs && !macro)
       ofNodeStream(js.Node.process.stdout, 'stdout')
     #elseif sys
       ofOutput('stdout', Sys.stdout())
@@ -36,17 +65,6 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
       BlackHole.INST
     #end
   ;
-}
-
-private class SimpleOutput extends Output {
-  var writer:Int->Void;
-  
-  public function new(writer)
-    this.writer = writer;
-    
-  override public function writeByte(c:Int):Void {
-    writer(c);
-  }
 }
 
 class AsyncSink extends SinkBase {
@@ -172,33 +190,17 @@ class SinkBase implements SinkObject {
     return throw 'writing not implemented';
     
   public function finish(from:Buffer):Surprise<Noise, Error>
-    return Future.async(function (cb) {
-      function flush() {
-        //trace(from.available);
-        if (from.available == 0) 
-          close().handle(cb);
-        else 
-          write(from).handle(function (o) switch o {
-            
-            case Success(p): 
-              trace(p);
-              if (p.isEof)
-                if (from.available == 0)
-                  close().handle(cb);
-                else
-                  cb(Success(Noise));
-              else
-                flush();
-                
-            case Failure(e): 
-              
-              cb(Failure(e));
-              
-          });
-      }
-      
-      flush();
-    });
+    return 
+      Future.async(function (cb) {
+        (this:Sink).writeFull(from).handle(function (o) switch o {
+          case Success(true):
+            close().handle(cb);
+          case Success(false):
+            cb(Success(Noise));
+          case Failure(e): 
+            cb(Failure(e));
+        });
+      });
     
 	public function close():Surprise<Noise, Error>
     return Future.sync(Success(Noise));
@@ -272,9 +274,9 @@ class ParserSink<T> extends SinkBase {
     return Future.sync(Success(Noise));
   }
   
-  public function parse(s:Source)
+  public function parse(s:Source, ?options)
     return Future.async(function (cb:Outcome<Source, Error>->Void) {
-      Pipe.make(s, this, Buffer.allocMin(2 * parser.minSize())).handle(function (res) 
+      Pipe.make(s, this, Buffer.sufficientWidthFor(parser.minSize())).handle(function (res) 
         cb(switch res {
           case AllWritten:
             Success(s);

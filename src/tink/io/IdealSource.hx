@@ -214,6 +214,36 @@ class ByteSource extends IdealSourceBase {
     
     return new ByteSource(bytes, 0);
   }
+  
+  override public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{?end:Bool}):Future<PipeResult<Error, Out>> {
+    var dest:Sink = dest;
+    var buf = Buffer.wrap(data, pos, data.length - pos);
+    var initial = buf.available;
+    
+    return 
+      Future.async(function (cb) 
+        dest.writeFull(buf).handle(function (o) {
+          
+          pos += buf.available - initial;
+          
+          cb(cast switch o {
+            case Success(true):  
+              if (options != null && options.end)
+                dest.close();
+              AllWritten;
+            case Success(false):
+              SinkEnded(buf);
+            case Failure(e): 
+              SinkFailed(e, buf);
+          });
+          
+          @:privateAccess buf.dispose();
+          
+          if (pos == data.length) closeSafely();
+          
+        })
+      );
+  }
       
   public function toString()
     return '[Byte Source $pos/${data.length}]';

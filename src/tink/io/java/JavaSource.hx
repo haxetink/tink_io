@@ -21,8 +21,8 @@ class JavaSource extends SourceBase {
   function readBytes(into:Bytes, pos:Int, len:Int):Int 
     return target.read(java.nio.ByteBuffer.wrap(into.getData(), pos, len));
   
-  override public function read(into:Buffer):Surprise<Progress, Error>
-    return worker.work(function () return into.tryReadingFrom(name, this));
+  override public function read(into:Buffer, ?max = 1 << 30):Surprise<Progress, Error>
+    return worker.work(function () return into.tryReadingFrom(name, this, max));
     
   override public function close():Surprise<Noise, Error> {
     target.close();
