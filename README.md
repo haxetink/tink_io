@@ -19,10 +19,10 @@ Buffers have a relatively fat API to allow buffering binary data. It is best to 
 
 StreamParsers are intended to parse data that they stream from buffers. Their interface is pretty simple:
 
-```
+```haxe
 interface StreamParser<Result> {
 	function progress(buffer:Buffer):Outcome<Option<Result>, Error>;
-  function eof():Outcome<Result, Error>;
+	function eof():Outcome<Result, Error>;
 }
 ```
 
@@ -34,7 +34,7 @@ The simplest way to construct a parser is to subclass `tink.io.StreamParser.Byte
 
 A sink is something you can write data to. Its interface is very simple:
 
-```
+```haxe
 abstract Sink {
 	function write(from:Buffer):Surprise<Progress, Error>;
 	function close():Surprise<Noise, Error>;  
@@ -49,15 +49,15 @@ Sinks can represent output streams. They can also represent parsers, through `ti
 
 A source is the counterpart of a sink. Sources come with a fleshed out interface:
   
-```
+```haxe
 abstract Source {
-  function read(into:Buffer):Surprise<Progress, Error>;
-  function close():Surprise<Noise, Error>;
-  function prepend(other:Source):Source;
-  function append(other:Source):Source;
-  function pipeTo(sink:Sink):Future<PipeResult>;
-  function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
-  function parseWhile<T>(parser:StreamParser<T>, resume:T->Future<Bool>):Surprise<Source, Error>;
+	function read(into:Buffer):Surprise<Progress, Error>;
+	function close():Surprise<Noise, Error>;
+	function prepend(other:Source):Source;
+	function append(other:Source):Source;
+	function pipeTo(sink:Sink):Future<PipeResult>;
+	function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
+	function parseWhile<T>(parser:StreamParser<T>, resume:T->Future<Bool>):Surprise<Source, Error>;
 }
 ```
 
@@ -69,16 +69,16 @@ Sources can be concatenated using `prepend` and `append`, they can be piped to s
 
 Ideal sources are special sources, that do not fail.
 
-```
+```haxe
 abstract IdealSource to Source {
-  function readSafely(into:Buffer):Future<Progress>;
-  function closeSafely():Future<Noise>;
+	function readSafely(into:Buffer):Future<Progress>;
+	function closeSafely():Future<Noise>;
 }
 ```
 
 For that reason, the base operations can be safely executed on them. The main point of ideal sources is to move responsibility for error handling to the call site. Imagine this:
 
-```
+```haxe
 function respond(message:IdealSource):Future<Noise> { ... }
 ```
 
@@ -88,10 +88,10 @@ It is the callers responsibility to provide an ideal source. Ideal sources can b
 
 Work, work, work! A worker looks like so:
 
-```
+```haxe
 abstract Worker {
-  public function work<A>(task:Lazy<A>):Future<A>;
-  @:from static function ofRunLoopWorker(w:tink.runloop.Worker):Worker;
+	public function work<A>(task:Lazy<A>):Future<A>;
+	@:from static function ofRunLoopWorker(w:tink.runloop.Worker):Worker;
 }
 ```
 
