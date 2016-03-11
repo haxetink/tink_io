@@ -218,10 +218,11 @@ class ParserSink<T> extends SinkBase {
   var wait:Future<Bool>;
   var worker:Worker;
   
-  public function new(parser, onResult) {
+  public function new(parser, onResult, ?worker:Worker) {
     this.parser = parser;
     this.onResult = onResult;
     this.wait = Future.sync(true);
+    this.worker = worker.ensure();
   }
   
   function doClose()
@@ -233,8 +234,8 @@ class ParserSink<T> extends SinkBase {
       if (this.state != null)
         Future.sync(this.state);
       else
-        this.wait.map(function (resume) (
-        //this.wait.flatMap(function (resume) return worker.work(function () 
+        //this.wait.map(function (resume) (
+        this.wait.flatMap(function (resume) return worker.work(function () 
           return
             if (!resume) {
               doClose();
