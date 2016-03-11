@@ -137,7 +137,7 @@ class SourceBase implements SourceObject {
     return Future.sync(Success(Noise));
   
   public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>>
-    return Pipe.make(this, dest, options);
+    return Future.async(function (cb) Pipe.make(this, dest, options, function (_, res) cb(res)));
     
   public function all() {
     var out = new BytesOutput();

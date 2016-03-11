@@ -3,6 +3,7 @@ package tink.io;
 import haxe.io.*;
 import tink.io.IdealSink;
 import tink.io.IdealSource;
+import tink.io.Pipe.PipeResult;
 import tink.io.Source;
 
 using tink.CoreApi;
@@ -276,13 +277,13 @@ class ParserSink<T> extends SinkBase {
   
   public function parse(s:Source, ?options)
     return Future.async(function (cb:Outcome<Source, Error>->Void) {
-      Pipe.make(s, this, Buffer.sufficientWidthFor(parser.minSize())).handle(function (res) 
+      Pipe.make(s, this, Buffer.sufficientWidthFor(parser.minSize()), function (rest:Buffer, res:PipeResult<Error, Error>) 
         cb(switch res {
           case AllWritten:
             Success(s);
-          case SinkEnded(rest):
+          case SinkEnded:
             Success(s.prepend((rest.content() : Source)));
-          case SinkFailed(e, _):
+          case SinkFailed(e):
             Failure(e);
           case SourceFailed(e):
             Failure(e);

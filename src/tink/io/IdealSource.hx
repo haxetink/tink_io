@@ -161,7 +161,7 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
     return readSafely(into, max).map(Success);
     
   public function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>
-    return Pipe.make(this, dest);
+    return Future.async(function (cb) Pipe.make(this, dest, function (_, res) cb(res)));
     
 }
 
@@ -232,9 +232,9 @@ class ByteSource extends IdealSourceBase {
                 dest.close();
               AllWritten;
             case Success(false):
-              SinkEnded(buf);
+              SinkEnded;
             case Failure(e): 
-              SinkFailed(e, buf);
+              SinkFailed(e);
           });
           
           @:privateAccess buf.dispose();
