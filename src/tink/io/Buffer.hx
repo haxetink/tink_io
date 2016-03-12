@@ -285,7 +285,7 @@ class Buffer {
   }
   
   static public inline var MIN_WIDTH = 10;
-  static public inline var DEFAULT_WIDTH = 16;
+  static public inline var DEFAULT_WIDTH = 15;
   static public inline var MAX_WIDTH = 28;
   
   static var mutex = new Mutex();
