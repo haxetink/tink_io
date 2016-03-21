@@ -33,7 +33,7 @@ class StreamParserTest extends TestCase {
       
   }
   
-  function _testSingleSteps() {
+  function testSingleSteps() {
     var source:Source = 'hello  world\t \r!!!';
     source.parse(new UntilSpace()).handle(function (x) {
       var x = x.sure();
@@ -46,7 +46,7 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function _testSplit() {
+  function testSplit() {
     var str = 'hello !!! world !!!!! !!! !!';
     var source:Source = str,
         a = [];
@@ -56,7 +56,7 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function _testSingleSplit() {
+  function testSingleSplit() {
     var c = chunk();
     var delim = '---12345-67890---';
     var s = '$c$delim$c$delim$c';
@@ -83,7 +83,7 @@ class StreamParserTest extends TestCase {
     return str;
   }
   
-  function _testParseWhile() {
+  function testParseWhile() {
     var str = 'hello world !!! how are you ??? ignore all this';
     
     var source:Source = str,
@@ -95,7 +95,7 @@ class StreamParserTest extends TestCase {
     
   }
   
-  function _testStreaming() {
+  function testStreaming() {
     var str = 'hello world !!! how are you ??? ignore all this';
     
     var source:Source = str;
@@ -104,7 +104,7 @@ class StreamParserTest extends TestCase {
     });
   }
   
-  function _testSplitSpeed() {
+  function testSplitSpeed() {
     var chunk = chunk(),
         delim = '-123456789-';
     

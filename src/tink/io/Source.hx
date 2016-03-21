@@ -162,17 +162,46 @@ class SourceBase implements SourceObject {
     return new ParserSink(parser, cond).parse(this);
     
   public function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>
-    return new ParsingStream(this, parser, rest).next;
+    return new ParserStream(this, parser, rest);
     
   public function split(delim:Bytes): { first:Source, then:Source } {
-    return null;
     //TODO: implement this in a streaming manner
-    //var f = parse(new Splitter(delim));
-    //return {
-      //first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
-      //then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
-    //}
+    var f = parse(new Splitter(delim));
+    return {
+      first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
+      then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
+    }
   }
+}
+
+private class ParserStream<T> extends tink.streams.Stream.StreamBase<T> {
+  var source:Source;
+  var parser:StreamParser<Null<T>>;
+  var handleRest:Callback<Source>;
+  
+  public function new(source, parser, ?handleRest) {
+    this.source = source;
+    this.parser = parser;
+    this.handleRest = handleRest;
+  }
+  
+  override public function forEachAsync(item:T->Future<Bool>):Surprise<Bool, Error>
+    return Future.async(function (finished) {
+      var done = false;
+      source.parseWhile(parser, function (v) 
+        return if (v == null) {
+          done = true;
+          Future.sync(false);
+        }
+        else item(v)
+      ).handle(function (o) finished(switch o {
+        case Success(rest):
+          if (done && handleRest != null)
+            handleRest.invoke(rest);
+          Success(done);
+        case Failure(e): Failure(e);
+      }));
+    });
 }
 
 private class LimitedSource extends SourceBase {
@@ -204,55 +233,6 @@ private class LimitedSource extends SourceBase {
           });
         });
   
-}
-
-private class ParsingStream<T> {//TODO: this still has some logic now moved out to tink_streams. Try to leverage that.
-  
-  var nextStep:FutureTrigger<StreamStep<T>>;
-  var awaitRead:FutureTrigger<Bool>;
-  
-  public function new(source:Source, parser, rest:Callback<Source>) {
-    
-    nextStep = Future.trigger();
-    awaitRead = Future.trigger();
-    
-    new ParserSink(parser, onResult).parse(source).handle(function (x) switch x {
-      case Success(v): 
-        
-        awaitRead.asFuture().handle(function () {
-          nextStep.trigger(End);
-          if (rest != null) rest.invoke(v);
-        });
-        
-      case Failure(e):
-        nextStep.trigger(Fail(e));
-    });
-  }
-  
-  public function next():Future<StreamStep<T>> {
-    var ret = nextStep;
-    awaitRead.trigger(true);
-    return ret;
-  }
-  
-  function onResult(data:T):Future<Bool>
-    return
-      if (data == null) {
-        nextStep.trigger(End);
-        Future.sync(false);
-      }
-      else {
-        var resume = awaitRead.asFuture();
-        resume.handle(function () {
-          var old = nextStep;
-          
-          nextStep = Future.trigger();
-          awaitRead = Future.trigger();
-          
-          old.trigger(Data(data));
-        });
-        resume;
-      }
 }
 
 private class FutureSource extends SourceBase {
@@ -317,6 +297,41 @@ private class StdSource extends SourceBase {
         )
       );
   }
+  override public function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error> {
+    var buf = Buffer.alloc(Buffer.sufficientWidthFor(parser.minSize()));
+    var ret = Future.async(function (cb) {
+      function step(?noread)
+        worker.work(function () return
+          switch if (noread) Success(Progress.NONE) else buf.tryReadingFrom(name, target) {
+            case Success(v):
+              if (v.isEof)
+                buf.seal();
+              
+              var available = buf.available;
+              switch parser.progress(buf) {
+                case Success(None) if (v.isEof && available == buf.available):
+                  Failure(new Error('Parser hung on input'));
+                case v: v;
+              }
+            case Failure(e):
+              Failure(e);
+          }
+        ).handle(function (o) switch o {
+          case Failure(e): cb(Failure(e));
+          case Success(Some(v)):
+            cond(v).handle(function (v) 
+              if (v) step(true);
+              else cb(Success(this.prepend(buf.content())))
+            );
+          case Success(None): step();
+        });
+        
+      step();
+    });
+    ret.handle(@:privateAccess buf.dispose);
+    
+    return ret;
+  }  
   
   public function toString()
     return name;

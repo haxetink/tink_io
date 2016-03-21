@@ -29,5 +29,41 @@ class JavaSource extends SourceBase {
     return Future.sync(Success(Noise));
   }
   
+  override public function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error> {
+    var buf = Buffer.alloc(Buffer.sufficientWidthFor(parser.minSize()));
+    var ret = Future.async(function (cb) {
+      function step(?noread)
+        worker.work(function () return
+          switch if (noread) Success(Progress.NONE) else buf.tryReadingFrom(name, this) {
+            case Success(v):
+              if (v.isEof)
+                buf.seal();
+              
+              var available = buf.available;
+              switch parser.progress(buf) {
+                case Success(None) if (v.isEof && available == buf.available):
+                  Failure(new Error('Parser hung on input'));
+                case v: v;
+              }
+            case Failure(e):
+              Failure(e);
+          }
+        ).handle(function (o) switch o {
+          case Failure(e): cb(Failure(e));
+          case Success(Some(v)):
+            cond(v).handle(function (v) 
+              if (v) step(true);
+              else cb(Success(this.prepend(buf.content())))
+            );
+          case Success(None): step();
+        });
+        
+      step();
+    });
+    ret.handle(@:privateAccess buf.dispose);
+    
+    return ret;
+  }    
+  
   //TODO: overwrite pipe for maximum fancyness
 }
