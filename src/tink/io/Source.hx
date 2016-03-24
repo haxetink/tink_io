@@ -365,12 +365,12 @@ private class CompoundSource extends SourceBase {
     });
   
   override public function close():Surprise<Noise, Error> {
-		if (parts.length == 0) return Future.sync(Success(Noise));
-		var ret = Future.ofMany([
+    if (parts.length == 0) return Future.sync(Success(Noise));
+    var ret = Future.ofMany([
       for (p in parts) 
         p.close()
     ]);
-		parts = [];
+    parts = [];
     return ret.map(function (outcomes) {
       var failures = [];
       for (o in outcomes)
@@ -390,19 +390,19 @@ private class CompoundSource extends SourceBase {
   }
   
   override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-		return switch parts {
-			case []: 
-				Future.sync(Success(Progress.EOF));
-			default:
-				parts[0].read(into).flatMap(
-					function (o) return switch o {
-						case Success(_.isEof => true):
+    return switch parts {
+      case []: 
+        Future.sync(Success(Progress.EOF));
+      default:
+        parts[0].read(into).flatMap(
+          function (o) return switch o {
+            case Success(_.isEof => true):
               parts.shift().close();
-							read(into, max);//Technically a huge array of empty synchronous sources could cause a stack overflow, but let's be optimistic for once!
-						default:
-							Future.sync(o);
-					}
-				);  
+              read(into, max);//Technically a huge array of empty synchronous sources could cause a stack overflow, but let's be optimistic for once!
+            default:
+              Future.sync(o);
+          }
+        );  
     }
   
   static public function of(a:Source, b:Source) //TODO: consider dealing with null

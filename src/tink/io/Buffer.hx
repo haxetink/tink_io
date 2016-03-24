@@ -6,18 +6,18 @@ import haxe.io.Error in IoError;
 using tink.CoreApi;
 
 typedef WritesBytes = { 
-	private function writeBytes(from:Bytes, pos:Int, len:Int):Int; 
+  private function writeBytes(from:Bytes, pos:Int, len:Int):Int; 
 }
 
 typedef ReadsBytes = {
-	private function readBytes(into:Bytes, pos:Int, len:Int):Int; 	
+  private function readBytes(into:Bytes, pos:Int, len:Int):Int;   
 }
 
 class Buffer {
-	var bytes:Bytes;
-	var raw:BytesData;
+  var bytes:Bytes;
+  var raw:BytesData;
   public var width(default, null):Int;
-	public var zero(default, null):Int = 0;
+  public var zero(default, null):Int = 0;
   public var retainCount(default, null) = 0;
   
   public function retain() {
@@ -30,78 +30,78 @@ class Buffer {
         dispose();
     }
   }
-	
-	public var writable(default, null):Bool = true;
-	public var available(default, null):Int = 0;
-	public var size(get, never):Int;
-	
-		inline function get_size()
-			return bytes.length;
-	
-	var end(get, never):Int;
-	
-	function get_end()
-		return
-			(zero + available) % size;
-			
-	public var freeBytes(get, never):Int;
-	
-		inline function get_freeBytes()
-			return bytes.length - available;
-			
-	function new(bytes, width) {
-		this.bytes = bytes;
-		this.raw = bytes.getData();
+  
+  public var writable(default, null):Bool = true;
+  public var available(default, null):Int = 0;
+  public var size(get, never):Int;
+  
+    inline function get_size()
+      return bytes.length;
+  
+  var end(get, never):Int;
+  
+  function get_end()
+    return
+      (zero + available) % size;
+      
+  public var freeBytes(get, never):Int;
+  
+    inline function get_freeBytes()
+      return bytes.length - available;
+      
+  function new(bytes, width) {
+    this.bytes = bytes;
+    this.raw = bytes.getData();
     this.width = width;
-	}
-	
+  }
+  
   /**
    * Seals the buffer
    */
-	public function seal()
-		this.writable = false;
-	
+  public function seal()
+    this.writable = false;
+  
   /**
    * Consolidates the content of the buffer into a single Bytes blob.
    * Does not affect the buffer.
    */
-	public function content():Bytes {
-		return blitTo(Bytes.alloc(available));
-	}
+  public function content():Bytes {
+    return blitTo(Bytes.alloc(available));
+  }
     
   function blitTo(ret:Bytes) {
-		if (zero + available <= size) 
-			ret.blit(0, bytes, zero, available);
-		else {
-			ret.blit(bytes.length - zero, bytes, 0, end);
-			ret.blit(0, bytes, zero, bytes.length - zero);
-		}
+    if (zero + available <= size) 
+      ret.blit(0, bytes, zero, available);
+    else {
+      ret.blit(bytes.length - zero, bytes, 0, end);
+      ret.blit(0, bytes, zero, bytes.length - zero);
+    }
     
     return ret;
   }
-		
-	public function toString() 
-		return '[Buffer $available/$size]';
-	
-	function safely(operation:String, f:Void->Progress):Outcome<Progress, Error>
-		return
-			try 
-				Success(f())
-			catch (e:IoError) 
-				Success(
-					if (e == Blocked) 
-						Progress.NONE 
-					else 
-						Progress.EOF //TODO: try being more specific here
-				)
+    
+  public function toString() 
+    return '[Buffer $available/$size]';
+  
+  function safely(operation:String, f:Void->Progress):Outcome<Progress, Error>
+    return
+      try 
+        Success(f())
+      catch (e:IoError) 
+        Success(
+          if (e == Blocked) 
+            Progress.NONE 
+          else 
+            Progress.EOF //TODO: try being more specific here
+        )
       catch (e:Eof)
         Success(Progress.EOF)
-			catch (e:Error) 
-				Failure(e)
-			catch (e:Dynamic) 
+      catch (e:Error) 
+        Failure(e)
+      catch (e:Dynamic) 
         Failure(Error.withData('$operation due to $e', e));
   
-	
+  
   /**
    * Writes to a destination with error handling.
    * If the destination raises an exception, then the buffer's state remains entirely unaffected.
@@ -109,15 +109,15 @@ class Buffer {
    * 
    * If the buffer handles an error, it is best to reset the destination to a known state, before attempting another write.
    */
-	public function tryWritingTo(name:String, dest:WritesBytes, max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
+  public function tryWritingTo(name:String, dest:WritesBytes, max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
     return safely('Failed writing to $name', writeTo.bind(dest, max));
-	
+  
   /**
    * Reads from a source with error handling. See tryWritingTo
    */  
-	public function tryReadingFrom(name:String, source:ReadsBytes, max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
-    return safely('Failed reading from $name', readFrom.bind(source, max));			
-	
+  public function tryReadingFrom(name:String, source:ReadsBytes, max = 1 << MAX_WIDTH):Outcome<Progress, Error> 
+    return safely('Failed reading from $name', readFrom.bind(source, max));      
+  
   /**
    * Writes contents of the buffer to the destination.
    * If this buffer is readonly and is drained by the write, it is disposed and EOF is returned.
@@ -125,43 +125,43 @@ class Buffer {
    * 
    * Use only if you know the destination not to produce exceptions.
    */
-	public function writeTo(dest:WritesBytes, max = 1 << MAX_WIDTH):Progress {
-		
-		if (available == 0) 
-			return 
-				if (writable) Progress.NONE;
-				else {
-					dispose();
-					Progress.EOF;
-				}
-		
-		var toWrite = 
-			if (zero + available > bytes.length)
-				bytes.length - zero;
-			else
-				available;
+  public function writeTo(dest:WritesBytes, max = 1 << MAX_WIDTH):Progress {
+    
+    if (available == 0) 
+      return 
+        if (writable) Progress.NONE;
+        else {
+          dispose();
+          Progress.EOF;
+        }
+    
+    var toWrite = 
+      if (zero + available > bytes.length)
+        bytes.length - zero;
+      else
+        available;
         
     if (max < 0)
       max = 0;
       
     if (max < toWrite)
       toWrite = max;
-		
-		var transfered = dest.writeBytes(bytes, zero, toWrite);
-		//if (zero + transfered == bytes.length)
-			//transfered += dest.writeBytes(bytes, 0, available - toWrite); 
-			
+    
+    var transfered = dest.writeBytes(bytes, zero, toWrite);
+    //if (zero + transfered == bytes.length)
+      //transfered += dest.writeBytes(bytes, 0, available - toWrite); 
+      
     if (transfered > 0) {
       zero = (zero + transfered) % bytes.length;
       available -= transfered;
-		}
+    }
     
     if (!writable && available == 0)
       dispose();
     
-		return Progress.by(transfered);
-	}	
-	
+    return Progress.by(transfered);
+  }  
+  
   public function align() {
     if (zero < end) 
       return false;
@@ -194,50 +194,50 @@ class Buffer {
    * 
    * Use only if you know the source not to produce exceptions.
    */
-	public function readFrom(source:ReadsBytes, max = 1 << MAX_WIDTH):Progress {
-		if (!writable) return Progress.EOF;
-		if (available == size) return Progress.NONE;
-		
-		var toRead = 
-			if (end < zero) 
-				freeBytes;
-			else
-				size - end;
+  public function readFrom(source:ReadsBytes, max = 1 << MAX_WIDTH):Progress {
+    if (!writable) return Progress.EOF;
+    if (available == size) return Progress.NONE;
+    
+    var toRead = 
+      if (end < zero) 
+        freeBytes;
+      else
+        size - end;
         
-		if (max < 0)
+    if (max < 0)
       max = 0;
       
     if (max < toRead)
       toRead = max;
-		
-		var transfered = source.readBytes(bytes, end, toRead);
-		
-		//if (end + transfered == size)
-			//transfered += source.readBytes(bytes, 0, zero);
-		
+    
+    var transfered = source.readBytes(bytes, end, toRead);
+    
+    //if (end + transfered == size)
+      //transfered += source.readBytes(bytes, 0, zero);
+    
     if (transfered > 0) {
       available += transfered;
     }
     
-		return Progress.by(transfered);
-	}
+    return Progress.by(transfered);
+  }
     
-	static public var ZERO_BYTES(default, null) = Bytes.alloc(0);
+  static public var ZERO_BYTES(default, null) = Bytes.alloc(0);
   
   static function poolBytes(b:Bytes, width:Int) {
     if (width >= MIN_WIDTH)
       mutex.synchronized(function () pool[width - MIN_WIDTH].push(b));
   }
   
-	function dispose() 
-		if (size > 0) {
+  function dispose() 
+    if (size > 0) {
       var old = this.bytes;
-			this.bytes = ZERO_BYTES;
-			this.raw = this.bytes.getData();
-			this.zero = 0;
-			this.available = 0;
+      this.bytes = ZERO_BYTES;
+      this.raw = this.bytes.getData();
+      this.zero = 0;
+      this.available = 0;
       poolBytes(old, width);
-		}
+    }
     
   static public function sufficientWidthFor(minSize:Int) {
     

@@ -42,7 +42,7 @@ class FakeSink extends SinkBase {
   public function new() {
     this.out = new BytesBuffer();
   }
-	override public function write(from:Buffer):Surprise<Progress, Error> {
+  override public function write(from:Buffer):Surprise<Progress, Error> {
     return Future.sync(from.tryWritingTo('fake sink', this));
   }
   public function writeBytes(bytes:Bytes, pos:Int, len:Int):Int {

@@ -6,12 +6,12 @@ import tink.io.Buffer;
 
 class BufferTest extends TestCase {
 
-	function testIndividual() {
-		var buffer = Buffer.unmanaged(Bytes.alloc(0x100)),
-				history = [],
-				written = 0;
-				
-		function write(num:Int)
+  function testIndividual() {
+    var buffer = Buffer.unmanaged(Bytes.alloc(0x100)),
+        history = [],
+        written = 0;
+        
+    function write(num:Int)
       buffer.readFrom({
         readBytes: function (into:Bytes, start, length) {
           if (num > length)
@@ -25,8 +25,8 @@ class BufferTest extends TestCase {
           return num;
         }
       });
-			
-		function read(num:Int)
+      
+    function read(num:Int)
       buffer.writeTo({
         writeBytes: function (bytes, start, len) {
           //assertTrue(len >= num);
@@ -39,24 +39,24 @@ class BufferTest extends TestCase {
         }
       });
 
-			
-		while (written < buffer.size << 3) {
-			write(Std.random(buffer.freeBytes));
-			read(Std.random(buffer.available));
-		}
-		read(buffer.available);
-		read(buffer.available);
-		assertEquals(0, buffer.available);
-		
-	}
-	
-	function testBulkWrite() 
-		for (i in 0...100) {
-			var buffer = Buffer.unmanaged(Bytes.alloc(0x10+i)),
-					history = [],
-					written = 0,
-					bytesRead = 0;
-					
+      
+    while (written < buffer.size << 3) {
+      write(Std.random(buffer.freeBytes));
+      read(Std.random(buffer.available));
+    }
+    read(buffer.available);
+    read(buffer.available);
+    assertEquals(0, buffer.available);
+    
+  }
+  
+  function testBulkWrite() 
+    for (i in 0...100) {
+      var buffer = Buffer.unmanaged(Bytes.alloc(0x10+i)),
+          history = [],
+          written = 0,
+          bytesRead = 0;
+          
       function write(num:Int)
         buffer.readFrom({
           readBytes: function (into:Bytes, start, length) {
@@ -71,59 +71,59 @@ class BufferTest extends TestCase {
             return num;
           }
         });
-				
-			function read(num:Int)
-				buffer.writeTo( {
-					writeBytes: function (bytes:Bytes, pos, length) {
-						assertTrue(pos >= 0);
-						assertTrue(pos + length <= bytes.length);
-						if (length > num) length = num;
-						num -= length;
-						
-						for (i in pos...pos+length) {
-							assertEquals(history.shift(), bytes.get(i));
-							written++;
-						}
-						return length;
-					}
-				});
-				
-			while (written < buffer.size << 3) {
-				write(Std.random(buffer.freeBytes));			
-				read(Std.random(buffer.available));
-			}
-			
-			read(buffer.available);
-			read(buffer.available);
-			
-			assertEquals(0, buffer.available);
-		}
-	
-	function testBulkRead() 
-		for (i in 0...100) {
-			var buffer = Buffer.unmanaged(Bytes.alloc(0x10 + i)),
-					history = [],
-					written = 0,
-					bytesRead = 0;
-					
-			function write(num:Int)
-				buffer.readFrom( {
-					readBytes: function (bytes:Bytes, pos, length) {
-						assertTrue(pos >= 0);
-						assertTrue(pos + length <= bytes.length);
-						if (length > num) length = num;
-						num -= length;
-						for (i in pos...pos+length) {
-							var byte = written % 203;
-							bytes.set(i, byte);
-							history.push(byte);
-							written++;
-						}
-						return length;
-					}
-				});
-				
-		function read(num:Int)
+        
+      function read(num:Int)
+        buffer.writeTo( {
+          writeBytes: function (bytes:Bytes, pos, length) {
+            assertTrue(pos >= 0);
+            assertTrue(pos + length <= bytes.length);
+            if (length > num) length = num;
+            num -= length;
+            
+            for (i in pos...pos+length) {
+              assertEquals(history.shift(), bytes.get(i));
+              written++;
+            }
+            return length;
+          }
+        });
+        
+      while (written < buffer.size << 3) {
+        write(Std.random(buffer.freeBytes));      
+        read(Std.random(buffer.available));
+      }
+      
+      read(buffer.available);
+      read(buffer.available);
+      
+      assertEquals(0, buffer.available);
+    }
+  
+  function testBulkRead() 
+    for (i in 0...100) {
+      var buffer = Buffer.unmanaged(Bytes.alloc(0x10 + i)),
+          history = [],
+          written = 0,
+          bytesRead = 0;
+          
+      function write(num:Int)
+        buffer.readFrom( {
+          readBytes: function (bytes:Bytes, pos, length) {
+            assertTrue(pos >= 0);
+            assertTrue(pos + length <= bytes.length);
+            if (length > num) length = num;
+            num -= length;
+            for (i in pos...pos+length) {
+              var byte = written % 203;
+              bytes.set(i, byte);
+              history.push(byte);
+              written++;
+            }
+            return length;
+          }
+        });
+        
+    function read(num:Int)
       buffer.writeTo({
         writeBytes: function (bytes, start, len) {
           //assertTrue(len >= num);
@@ -136,14 +136,14 @@ class BufferTest extends TestCase {
           return num;
         }
       });
-				
-			while (written < buffer.size << 3) {
-				write(Std.random(buffer.freeBytes));			
-				read(Std.random(buffer.available));
-			}
-			
-			read(buffer.available);
-			assertEquals(0, buffer.available);
-			
-		}	
+        
+      while (written < buffer.size << 3) {
+        write(Std.random(buffer.freeBytes));      
+        read(Std.random(buffer.available));
+      }
+      
+      read(buffer.available);
+      assertEquals(0, buffer.available);
+      
+    }  
 }

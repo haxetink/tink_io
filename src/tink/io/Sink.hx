@@ -172,7 +172,7 @@ interface SinkObject {
    * - depletion of a readonly buffer, which is the case if `from.available == 0 && !from.writable`
    * - end of the sink itself
    */
-	function write(from:Buffer):Surprise<Progress, Error>;
+  function write(from:Buffer):Surprise<Progress, Error>;
   /**
    * Ends the sink with the contents of the supplied buffer.
    * 
@@ -182,12 +182,12 @@ interface SinkObject {
    * Note that if the sink ends on its own before all data is written, the buffer will contain any remaining data.
    */
   function finish(from:Buffer):Surprise<Noise, Error>;
-	function close():Surprise<Noise, Error>;  
+  function close():Surprise<Noise, Error>;  
   function idealize(onError:Callback<Error>):IdealSink;
 }
 
 class SinkBase implements SinkObject {
-	public function write(from:Buffer):Surprise<Progress, Error>
+  public function write(from:Buffer):Surprise<Progress, Error>
     return throw 'writing not implemented';
     
   public function finish(from:Buffer):Surprise<Noise, Error>
@@ -203,7 +203,7 @@ class SinkBase implements SinkObject {
         });
       });
     
-	public function close():Surprise<Noise, Error>
+  public function close():Surprise<Noise, Error>
     return Future.sync(Success(Noise));
     
   public function idealize(onError:Callback<Error>):IdealSink
@@ -271,7 +271,7 @@ class ParserSink<T> extends SinkBase {
             }
         ));
   
-	override public function close():Surprise<Noise, Error> {
+  override public function close():Surprise<Noise, Error> {
     doClose();
     return Future.sync(Success(Noise));
   }

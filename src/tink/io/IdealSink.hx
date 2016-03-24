@@ -72,9 +72,9 @@ class IdealSinkBase extends SinkBase implements IdealSinkObject {
   public function closeSafely():Future<Noise>
     return Future.sync(Noise);
     
-	override public function write(from:Buffer):Surprise<Progress, Error> 
+  override public function write(from:Buffer):Surprise<Progress, Error> 
     return writeSafely(from).map(Success);
   
-	override public function close():Surprise<Noise, Error>
+  override public function close():Surprise<Noise, Error>
     return closeSafely().map(Success);
 }

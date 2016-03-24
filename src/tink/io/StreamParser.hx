@@ -10,14 +10,14 @@ using tink.CoreApi;
  */
 interface StreamParser<Result> {
   function minSize():Int;
-	function progress(buffer:Buffer):Outcome<Option<Result>, Error>;
-	function eof():Outcome<Result, Error>;
+  function progress(buffer:Buffer):Outcome<Option<Result>, Error>;
+  function eof():Outcome<Result, Error>;
 }
 
 enum ParseStep<Result> {
-	Failed(e:Error);
-	Done(r:Result);
-	Progressed;
+  Failed(e:Error);
+  Done(r:Result);
+  Progressed;
 }
 
 class Splitter implements StreamParser<Bytes> {
@@ -67,7 +67,7 @@ class Splitter implements StreamParser<Bytes> {
     return length;
   }
   
-	public function progress(buffer:Buffer):Outcome<Option<Bytes>, Error> {
+  public function progress(buffer:Buffer):Outcome<Option<Bytes>, Error> {
     if (result != None) {
       reset();
       result = None;
@@ -81,55 +81,55 @@ class Splitter implements StreamParser<Bytes> {
     
     return Success(result);
   }
-	public function eof():Outcome<Bytes, Error> {
+  public function eof():Outcome<Bytes, Error> {
     return Success(out.getBytes());
   }
 }
 
 class ByteWiseParser<Result> implements StreamParser<Result> {
-	
+  
   var result:Outcome<Option<Result>, Error>;
   var resume:Outcome<Option<Result>, Error>;
-	
-	public function new() {
+  
+  public function new() {
     resume = Success(None);
   }
-	
+  
   public function minSize():Int
     return 1;
     
-	function read(c:Int):ParseStep<Result>
-		return throw 'not implemented';
-		
-	public function eof():Outcome<Result, Error> 
-		return
-			switch read(-1) {
-				case Failed(e):
-					Failure(e);
-				case Done(r):
-					Success(r);
-				default:
-					Failure(new Error(UnprocessableEntity, 'Unexpected end of input'));
-			}		
+  function read(c:Int):ParseStep<Result>
+    return throw 'not implemented';
+    
+  public function eof():Outcome<Result, Error> 
+    return
+      switch read(-1) {
+        case Failed(e):
+          Failure(e);
+        case Done(r):
+          Success(r);
+        default:
+          Failure(new Error(UnprocessableEntity, 'Unexpected end of input'));
+      }    
       
   function writeBytes(bytes:Bytes, start:Int, length:Int) {
     var data = bytes.getData();
     
-		for (pos in start ... start + length) 
-			switch read(Bytes.fastGet(data, pos)) {
-				case Progressed:
-				case Failed(e):
-					result = Failure(e);
+    for (pos in start ... start + length) 
+      switch read(Bytes.fastGet(data, pos)) {
+        case Progressed:
+        case Failed(e):
+          result = Failure(e);
           return pos - start + 1;
-				case Done(r):
+        case Done(r):
           result = Success(Some(r));
           return pos - start + 1;
-			}    
+      }    
       
     return length;
   }
-	
-	public function progress(buffer:Buffer):Outcome<Option<Result>, Error> {
+  
+  public function progress(buffer:Buffer):Outcome<Option<Result>, Error> {
     result = resume;
     buffer.writeTo(this);
     return result;

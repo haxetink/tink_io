@@ -21,10 +21,10 @@ class Pipe {
       else Buffer.DEFAULT_WIDTH;
       
     this.autoClose = autoClose;
-		this.source = source;
-		this.dest = dest;
-		
-		this.onDone = onDone;
+    this.source = source;
+    this.dest = dest;
+    
+    this.onDone = onDone;
   }
   
   function terminate(s) {
@@ -56,22 +56,22 @@ class Pipe {
     this.read();
   }
   
-	function read()
-		source.read(buffer).handle(function (o) switch o {
-			case Success(_.isEof => true):
+  function read()
+    source.read(buffer).handle(function (o) switch o {
+      case Success(_.isEof => true):
         source.close();
         buffer.seal();
-				flush();
-			case Success(v):
+        flush();
+      case Success(v):
         if (v == 0 && buffer.available == 0)
           suspend();
         else
           flush();
-			case Failure(e):
+      case Failure(e):
         terminate(SourceFailed(e));
-		});
+    });
     
-	function flush(?repeat = 1) {
+  function flush(?repeat = 1) {
     if (buffer.writable || !autoClose) {
       dest.write(buffer).handle(function (o) switch o {
         case Success(_.isEof => true):
