@@ -10,9 +10,13 @@ import tink.io.Pipe;
 using tink.CoreApi;
 
 class StreamParserTest extends TestCase {
+  var w:TestWorker;
+  
+  override public function setup():Void {
+    w = new TestWorker();
+  }
   
   function testLimit() {
-    
     var s = 'abcdefghijklmnopqrstuvwxyz123456';
     
     for (i in 0...16)
@@ -21,7 +25,7 @@ class StreamParserTest extends TestCase {
     for (i in 18...23) {
       var size = 1 << i;
       var out = new BytesOutput();
-      (s : Source).limit(size).pipeTo(Sink.ofOutput('mem', out, Worker.EAGER)).handle(function (x) {
+      (s : Source).limit(size).pipeTo(Sink.ofOutput('mem', out, w)).handle(function (x) {
         var read = out.getBytes().length;
         assertEquals(AllWritten, x);
         if (size > s.length) 
@@ -31,6 +35,7 @@ class StreamParserTest extends TestCase {
       });
     }
       
+    w.runAll();
   }
   
   function testSingleSteps() {
@@ -72,6 +77,9 @@ class StreamParserTest extends TestCase {
         assertEquals(lengths.shift(), out.getBytes().length);
       });
     }
+    
+    //w.runAll();
+    
     assertEquals(0, lengths.length);
   }
   function chunk() {
@@ -103,7 +111,7 @@ class StreamParserTest extends TestCase {
       assertEquals(' $str'.split(' ').join('-'), x.sure());
     });
   }
-  
+  #if (!interp)
   function testSplitSpeed() {
     var chunk = chunk(),
         delim = '-123456789-';
@@ -120,7 +128,7 @@ class StreamParserTest extends TestCase {
     var start = Timer.stamp();
     (str : Source).parseWhile(new Splitter(Bytes.ofString(delim)), function (x) { 
       assertEquals(chunk.length, x.length);
-      return Future.sync(true); 
+      return w.work(true); 
     }).handle(function (x) {
       assertTrue(x.isSuccess());
       
@@ -134,7 +142,7 @@ class StreamParserTest extends TestCase {
     var start = Timer.stamp();
     (str : Source).parseWhile(new Splitter(Bytes.ofString(chunk)), function (x) {
       assertEquals(delim.length, x.length);
-      return Future.sync(true);
+      return w.work(true);
     }).handle(function (x) {
       assertTrue(x.isSuccess());      
       var faster = Timer.stamp() - start < 100 * direct;
@@ -142,8 +150,10 @@ class StreamParserTest extends TestCase {
         trace([Timer.stamp() - start, direct]);
       assertTrue(faster);
     });
+    
+    w.runAll();
   }
-  
+  #end
 }
 
 private class UntilSpace extends ByteWiseParser<String> {
