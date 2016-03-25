@@ -5,9 +5,11 @@ import haxe.unit.TestCase;
 import tink.io.Buffer;
 
 class BufferTest extends TestCase {
-
+  function unmanaged(size)
+    return @:privateAccess Buffer.unmanaged(Bytes.alloc(size));
+    
   function testIndividual() {
-    var buffer = Buffer.unmanaged(Bytes.alloc(0x100)),
+    var buffer = (unmanaged(0x100)),
         history = [],
         written = 0;
         
@@ -52,7 +54,7 @@ class BufferTest extends TestCase {
   
   function testBulkWrite() 
     for (i in 0...100) {
-      var buffer = Buffer.unmanaged(Bytes.alloc(0x10+i)),
+      var buffer = (unmanaged(0x10+i)),
           history = [],
           written = 0,
           bytesRead = 0;
@@ -101,7 +103,7 @@ class BufferTest extends TestCase {
   
   function testBulkRead() 
     for (i in 0...100) {
-      var buffer = Buffer.unmanaged(Bytes.alloc(0x10 + i)),
+      var buffer = (unmanaged(0x10 + i)),
           history = [],
           written = 0,
           bytesRead = 0;

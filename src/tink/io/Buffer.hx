@@ -16,7 +16,7 @@ typedef ReadsBytes = {
 class Buffer {
   var bytes:Bytes;
   var raw:BytesData;
-  public var width(default, null):Int;
+  public var width(default, null):Int = 0;
   public var zero(default, null):Int = 0;
   public var retainCount(default, null) = 0;
   
@@ -267,7 +267,7 @@ class Buffer {
   
   static function allocBytes(width:Int)
     return 
-      switch mutex.synchronized(pool[width - MIN_WIDTH].pop) {
+      switch mutex.synchronized(function () return pool[width - MIN_WIDTH].pop()) {
         case null: Bytes.alloc(1 << width);
         case v: v;
       }

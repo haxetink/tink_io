@@ -216,15 +216,15 @@ private class LimitedSource extends SourceBase {
     this.limit = limit;
   }
   
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error> 
+  override public function read(into:Buffer, maxb:Int = 1 << 30):Surprise<Progress, Error> 
     return 
       if (bytesRead >= limit) 
         Future.sync(Success(Progress.EOF));
       else
         Future.async(function (cb) {
-          if (max > limit - bytesRead)
-            max = limit - bytesRead;
-          target.read(into, max).handle(function (x) {
+          if (maxb > limit - bytesRead)
+            maxb = limit - bytesRead;
+          target.read(into, maxb).handle(function (x) {
             switch x {
               case Success(p): bytesRead += p.bytes;
               default:

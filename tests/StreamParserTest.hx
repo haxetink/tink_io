@@ -111,7 +111,9 @@ class StreamParserTest extends TestCase {
       assertEquals(' $str'.split(' ').join('-'), x.sure());
     });
   }
-  #if (!interp)
+  #if (interp || python)
+  
+  #else
   function testSplitSpeed() {
     var chunk = chunk(),
         delim = '-123456789-';
