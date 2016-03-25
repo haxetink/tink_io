@@ -107,11 +107,11 @@ class StreamParserTest extends TestCase {
     var str = 'hello world !!! how are you ??? ignore all this';
     
     var source:Source = str;
-    source.parseStream(new UntilSpace()).fold('', function (ret, x) return '$ret-$x').handle(function (x) {
+    source.parseStream(new UntilSpace()).fold('', function (ret:String, x:String) return '$ret-$x').handle(function (x) {
       assertEquals(' $str'.split(' ').join('-'), x.sure());
     });
   }
-  #if (interp || python)
+  #if (interp || python || php)
   
   #else
   function testSplitSpeed() {
@@ -134,7 +134,7 @@ class StreamParserTest extends TestCase {
     }).handle(function (x) {
       assertTrue(x.isSuccess());
       
-      var faster = Timer.stamp() - start < 100 * direct;
+      var faster = Timer.stamp() - start <= 100 * direct;
       if (!faster)
         trace([Timer.stamp() - start, direct]);
       assertTrue(faster);
@@ -147,7 +147,7 @@ class StreamParserTest extends TestCase {
       return w.work(true);
     }).handle(function (x) {
       assertTrue(x.isSuccess());      
-      var faster = Timer.stamp() - start < 100 * direct;
+      var faster = Timer.stamp() - start <= 100 * direct;
       if (!faster)
         trace([Timer.stamp() - start, direct]);
       assertTrue(faster);

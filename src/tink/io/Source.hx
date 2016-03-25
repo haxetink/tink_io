@@ -64,6 +64,8 @@ private class SimpleSource extends SourceBase {
     
 }
 
+typedef NullOr<T> = T;//This is practically equivalent with Null<T>, except that it gets no special treatement by the compiler and just gets resolved to T. Otherwise it would fail for hxjava
+
 interface SourceObject {
     
   function read(into:Buffer, max:Int = 1 << 30):Surprise<Progress, Error>;
@@ -79,7 +81,7 @@ interface SourceObject {
   
   function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
-  function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>;
+  function parseStream<T>(parser:StreamParser<NullOr<T>>, ?rest:Callback<Source>):Stream<T>;
   function split(delim:Bytes):{ first:Source, then:Source };
   
 }
@@ -161,7 +163,7 @@ class SourceBase implements SourceObject {
   public function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>
     return new ParserSink(parser, cond).parse(this);
     
-  public function parseStream<T>(parser:StreamParser<Null<T>>, ?rest:Callback<Source>):Stream<T>
+  public function parseStream<T>(parser:StreamParser<T>, ?rest:Callback<Source>):Stream<T>
     return new ParserStream(this, parser, rest);
     
   public function split(delim:Bytes): { first:Source, then:Source } {
