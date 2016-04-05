@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Dispose of pipe buffers AFTER the pipe result was dispatched.",
-	"version": "0.0.4",
+	"releasenote": "Overall improvements and better cross platform support.",
+	"version": "0.1.0",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
