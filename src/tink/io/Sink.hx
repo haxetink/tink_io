@@ -59,7 +59,7 @@ abstract Sink(SinkObject) to SinkObject from SinkObject {
   
   static public var stdout(default, null):Sink =
     #if (nodejs && !macro)
-      ofNodeStream(js.Node.process.stdout, 'stdout')
+      ofNodeStream('stdout', js.Node.process.stdout)
     #elseif sys
       ofOutput('stdout', Sys.stdout())
     #else
