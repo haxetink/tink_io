@@ -12,7 +12,7 @@ using tink.CoreApi;
 abstract Sink(SinkObject) to SinkObject from SinkObject {
   
   #if (nodejs && !macro)
-  static public function ofNodeStream(w:js.node.stream.Writable.IWritable, name):Sink
+  static public function ofNodeStream(name, w:js.node.stream.Writable.IWritable):Sink
     return new tink.io.nodejs.NodejsSink(w, name);
   #end
   

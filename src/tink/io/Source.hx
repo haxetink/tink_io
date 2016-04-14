@@ -16,7 +16,7 @@ using tink.CoreApi;
 abstract Source(SourceObject) from SourceObject to SourceObject {
     
   #if (nodejs && !macro)
-  static public function ofNodeStream(r:js.node.stream.Readable.IReadable, name)
+  static public function ofNodeStream(name, r:js.node.stream.Readable.IReadable)
     return new tink.io.nodejs.NodejsSource(r, name);
   #end
   
