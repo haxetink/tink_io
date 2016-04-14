@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Overall improvements and better cross platform support.",
-	"version": "0.1.0",
+	"releasenote": "Consistent argument order when wrapping native streams into Source/Sink.",
+	"version": "0.2.0",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
