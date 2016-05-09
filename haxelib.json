@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Consistent argument order when wrapping native streams into Source/Sink.",
-	"version": "0.2.0",
+	"releasenote": "Fix parsing of std sources.",
+	"version": "0.2.1",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
