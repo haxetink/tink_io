@@ -9,12 +9,13 @@ import tink.io.Sink;
 import tink.io.StreamParser;
 import tink.io.Worker;
 import tink.streams.*;
+import haxe.ds.Option;
 
 using tink.CoreApi;
 
 @:forward
 abstract Source(SourceObject) from SourceObject to SourceObject {
-    
+  
   #if (nodejs && !macro)
   static public function ofNodeStream(name, r:js.node.stream.Readable.IReadable)
     return new tink.io.nodejs.NodejsSource(r, name);
@@ -41,7 +42,6 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     
   @:from static function fromString(s:String):Source
     return fromBytes(Bytes.ofString(s));
-    
 }
 
 private class SimpleSource extends SourceBase {
@@ -310,11 +310,15 @@ private class StdSource extends SourceBase {
                 buf.seal();
               
               var available = buf.available;
-              switch parser.progress(buf) {
-                case Success(None) if (v.isEof && available == buf.available):
-                  Failure(new Error('Parser hung on input'));
-                case v: v;
-              }
+              
+              if (v.isEof && available == 0)
+                parser.eof().map(Some);
+              else
+                switch parser.progress(buf) {
+                  case Success(None) if (v.isEof && available == buf.available):
+                    Failure(new Error('Parser hung on input'));
+                  case v: v;
+                }
             case Failure(e):
               Failure(e);
           }
