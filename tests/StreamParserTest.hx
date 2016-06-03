@@ -67,7 +67,7 @@ class StreamParserTest extends TestCase {
     var s = '$c$delim$c$delim$c';
     
     var parts = switch (s : Source).split(Bytes.ofString(delim)) {
-      case v: [v.first, v.then];
+      case v: [v.a, v.b];
     }
     
     var lengths = [c.length, 2 * c.length + delim.length];

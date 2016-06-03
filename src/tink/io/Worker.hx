@@ -6,7 +6,7 @@ abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   
   static public var EAGER(default, null):Worker = new EagerWorker();
   static var pool:Array<Worker> = 
-    #if tink_runloop
+    #if (tink_runloop && !macro)
       [for (i in 0...#if concurrent 16 #else 1 #end) tink.RunLoop.current.createSlave()]
     #else
       [EAGER]
@@ -22,7 +22,7 @@ abstract Worker(WorkerObject) from WorkerObject to WorkerObject {
   public function work<A>(task:Lazy<A>):Future<A>
     return this.work(task);
   
-  #if tink_runloop
+  #if (tink_runloop && !macro)
   @:from static function ofRunLoopWorker(worker):Worker
     return (new RunLoopWorker(worker) : WorkerObject);
   #end
@@ -36,7 +36,7 @@ private class EagerWorker implements WorkerObject {
     return Future.sync(task.get());    
 }
 
-#if tink_runloop
+#if (tink_runloop && !macro)
 private class RunLoopWorker implements WorkerObject {
   
   var actualWorker:tink.runloop.Worker;

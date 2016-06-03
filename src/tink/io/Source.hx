@@ -13,17 +13,48 @@ import haxe.ds.Option;
 
 using tink.CoreApi;
 
-@:forward
 abstract Source(SourceObject) from SourceObject to SourceObject {
+  
+  public inline function read(into:Buffer, max:Int = 1 << 30):Surprise<Progress, Error>
+    return this.read(into, max);
+    
+  public inline function close():Surprise<Noise, Error>
+    return this.close();
+    
+  public inline function all():Surprise<Bytes, Error> 
+    return this.all();
+  
+  public inline function prepend(other:Source):Source
+    return this.prepend(other);
+  
+  public inline function append(other:Source):Source
+    return this.append(other);
+  
+  public inline function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options: { ?end: Bool } ):Future<PipeResult<Error, Out>>
+    return this.pipeTo(dest, options);
+    
+  public inline function idealize(onError:Callback<Error>):IdealSource
+    return this.idealize(onError);
+    
+  public inline function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>
+    return this.parse(parser);
+    
+  public inline function parseWhile<T>(parser:StreamParser<T>, consumer:T->Future<Bool>):Surprise<Source, Error>
+    return this.parseWhile(parser, consumer);
+    
+  public inline function parseStream<T>(parser:StreamParser<NullOr<T>>, ?rest:Callback<Source>):Stream<T>
+    return this.parseStream(parser, rest);
+     
+  public inline function split(delim:Bytes):Pair<Source, Source>
+    return this.split(delim);
   
   #if (nodejs && !macro)
   static public function ofNodeStream(name, r:js.node.stream.Readable.IReadable)
     return new tink.io.nodejs.NodejsSource(r, name);
   #end
   
-  public function limit(length:Int):Source {
+  public function limit(length:Int):Source 
     return new LimitedSource(this, length);
-  }
   
   static public function async(f, close) 
     return new AsyncSource(f, close);
@@ -37,10 +68,10 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
   @:from static public function flatten(s:Surprise<Source, Error>):Source
     return new FutureSource(s);    
     
-  @:from static function fromBytes(b:Bytes):Source
+  @:from static public function fromBytes(b:Bytes):Source
     return tink.io.IdealSource.ofBytes(b);
     
-  @:from static function fromString(s:String):Source
+  @:from static public function fromString(s:String):Source
     return fromBytes(Bytes.ofString(s));
 }
 
@@ -82,7 +113,7 @@ interface SourceObject {
   function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
   function parseStream<T>(parser:StreamParser<NullOr<T>>, ?rest:Callback<Source>):Stream<T>;
-  function split(delim:Bytes):{ first:Source, then:Source };
+  function split(delim:Bytes):Pair<Source, Source>;
   
 }
 
@@ -166,13 +197,13 @@ class SourceBase implements SourceObject {
   public function parseStream<T>(parser:StreamParser<T>, ?rest:Callback<Source>):Stream<T>
     return new ParserStream(this, parser, rest);
     
-  public function split(delim:Bytes): { first:Source, then:Source } {
+  public function split(delim:Bytes):Pair<Source, Source> {
     //TODO: implement this in a streaming manner
     var f = parse(new Splitter(delim));
-    return {
-      first: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
-      then: new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest),
-    }
+    return new Pair<Source, Source>(
+      new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
+      new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest)
+    );
   }
 }
 

@@ -217,60 +217,72 @@ class ParserSink<T> extends SinkBase {
   var onResult:T->Future<Bool>;
   var wait:Future<Bool>;
   var worker:Worker;
+  static var idCounter = 0;
+  var id:Int = idCounter++;
+  var callCounter = 0;
   
   public function new(parser, onResult, ?worker:Worker) {
     this.parser = parser;
     this.onResult = onResult;
     this.wait = Future.sync(true);
-    this.worker = worker.ensure();
+    this.worker = Worker.EAGER;
+    
+    //trace('================= $id ================');
+    //trace(haxe.CallStack.toString(haxe.CallStack.callStack()));
+    //trace('--------------------------------------');
   }
   
   function doClose()
     if (state == null)
       state = Success(Progress.EOF);
   
-  override public function write(from:Buffer):Surprise<Progress, Error>
+  override public function write(from:Buffer):Surprise<Progress, Error> {
+    var call = callCounter++;
+    //trace('write $id:$call $state');
     return
       if (this.state != null)
         Future.sync(this.state);
       else
-        //this.wait.map(function (resume) (
-        this.wait.flatMap(function (resume) return worker.work(function () 
+        this.wait.flatMap(function (resume) {
+          //trace('$id:$call $resume');
           return
             if (!resume) {
               doClose();
-              state;
+              Future.sync(this.state);
             }
-            else {
-              var last = from.available;
-              
-              if (last == 0 && !from.writable)
-                switch parser.eof() {
-                  case Success(v):
-                    doClose();
-                    this.wait = onResult(v);//if it helps?
-                    Success(Progress.EOF);
-                  case Failure(e):
-                    state = Failure(e);
-                }
-              else
-                switch parser.progress(from) {
-                  case Success(d):
-                    
-                    switch d {
-                      case Some(v):
-                        this.wait = onResult(v);
-                      case None:
+            else 
+              worker.work(function () {
+                var last = from.available;
+                return
+                  if (last == 0 && !from.writable)
+                    switch parser.eof() {
+                      case Success(v):
+                        doClose();
+                        //trace('set');
+                        this.wait = onResult(v);//if it helps?
+                        Success(Progress.EOF);
+                      case Failure(e):
+                        state = Failure(e);
                     }
-                    
-                    Success(Progress.by(last - from.available));
-                    
-                  case Failure(f):
-                    state = Failure(f);
-                }
-            }
-        ));
-  
+                  else
+                    switch parser.progress(from) {
+                      case Success(d):
+                        
+                        switch d {
+                          case Some(v):
+                            //trace('set');
+                            this.wait = onResult(v);
+                          case None:
+                        }
+                        
+                        Success(Progress.by(last - from.available));
+                        
+                      case Failure(f):
+                        state = Failure(f);
+                    }
+              });
+        });
+  }
   override public function close():Surprise<Noise, Error> {
     doClose();
     return Future.sync(Success(Noise));
