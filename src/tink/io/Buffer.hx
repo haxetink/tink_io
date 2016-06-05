@@ -22,12 +22,13 @@ class Buffer {
   
   public function retain() {
     retainCount++;
-    var called = false;
+    var self = this;
+    
     return function () {
-      if (called) return;
-      called = true;
-      if (--retainCount == 0)
-        dispose();
+      if (self == null) return;
+      if (--self.retainCount == 0) 
+        self.dispose();
+      self = null;
     }
   }
   

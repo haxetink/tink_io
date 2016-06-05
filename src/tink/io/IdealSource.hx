@@ -7,8 +7,23 @@ import tink.io.Source;
 
 using tink.CoreApi;
 
-@:forward
 abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObject to Source {
+  
+	public inline function read(into:Buffer, max:Int = 1 << 30):Future<Progress>
+    return this.readSafely(into, max);
+    
+	public inline function close():Future<Noise>
+    return this.closeSafely();
+    
+	public inline function prepend(other:IdealSource):IdealSource
+    return CompoundSource.of(other, this);
+    
+	public inline function append(other:IdealSource):IdealSource
+    return CompoundSource.of(this, other);
+    
+	public inline function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options):Future<PipeResult<Noise, Out>>
+    return this.pipeSafelyTo(dest, options);
+  
   static public inline function ofBytes(b:Bytes, offset:Int = 0):IdealSource 
     return 
       if (b == null) Empty.instance;
@@ -28,7 +43,7 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
 }
 
 interface IdealSourceObject extends SourceObject {
-  function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>;
+  function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end:Bool }):Future<PipeResult<Noise, Out>>;
   function readSafely(into:Buffer, max:Int = 1 << Buffer.MAX_WIDTH):Future<Progress>;
   function closeSafely():Future<Noise>;
 }
@@ -160,8 +175,8 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
   override public inline function read(into:Buffer, max = 1 << Buffer.MAX_WIDTH) 
     return readSafely(into, max).map(Success);
     
-  public function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>):Future<PipeResult<Noise, Out>>
-    return Future.async(function (cb) Pipe.make(this, dest, function (_, res) cb(res)));
+  public function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end:Bool }):Future<PipeResult<Noise, Out>>
+    return Future.async(function (cb) Pipe.make(this, dest, options, function (_, res) cb(res)));
     
 }
 
@@ -237,8 +252,6 @@ class ByteSource extends IdealSourceBase {
               SinkFailed(e);
           });
           
-          @:privateAccess buf.dispose();
-          
           if (pos == data.length) closeSafely();
           
         })
@@ -256,4 +269,65 @@ class ByteSource extends IdealSourceBase {
     pos = 0;
     return Future.sync(Noise);
   }
+}
+
+private class CompoundSource extends IdealSourceBase {
+  var parts:Array<IdealSource>;
+  public function new(parts)
+    this.parts = parts;
+  
+  override public function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Noise, Out>> 
+    return Future.async(function (cb) {
+      function next()
+        switch parts {
+          case []: cb(AllWritten);
+          case v: 
+            parts[0].pipeTo(dest, if (parts.length == 1) options else null).handle(function (x) switch x {
+              case AllWritten:
+                parts.shift().close();
+                next();
+              default:
+                cb(x);
+            });
+        };
+        
+      next();
+    });
+  
+  override public function closeSafely():Future<Noise> 
+    return 
+      switch parts {
+        case []: Future.sync(Noise);
+        default: Future.ofMany([for (p in parts) p.close()]).map(function (_) return Noise);
+      }
+  
+  override public function readSafely(into:Buffer, max = 1 << 30):Future<Progress>
+    return switch parts {
+      case []: 
+        Future.sync(Progress.EOF);
+      default:
+        Future.async(function (cb) 
+          parts[0].read(into).handle(function (p)
+            if (p.isEof) {
+              parts.shift().close();
+              readSafely(into, max);
+            }
+            else cb(p)
+          )
+        );
+    }
+  
+  static public function of(a:IdealSource, b:IdealSource) //TODO: consider dealing with null
+    return new CompoundSource(
+      switch [Std.instance(a, CompoundSource), Std.instance(b, CompoundSource)] {
+        case [null, null]: 
+          [a, b];
+        case [null, { parts: p }]: 
+          [a].concat(p);  
+        case [{ parts: p }, null]: 
+          p.concat([b]);
+        case [{ parts: p1 }, { parts: p2 }]:
+          p1.concat(p2);
+      }
+    );
 }

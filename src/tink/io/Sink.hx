@@ -226,10 +226,6 @@ class ParserSink<T> extends SinkBase {
     this.onResult = onResult;
     this.wait = Future.sync(true);
     this.worker = Worker.EAGER;
-    
-    //trace('================= $id ================');
-    //trace(haxe.CallStack.toString(haxe.CallStack.callStack()));
-    //trace('--------------------------------------');
   }
   
   function doClose()
@@ -238,13 +234,11 @@ class ParserSink<T> extends SinkBase {
   
   override public function write(from:Buffer):Surprise<Progress, Error> {
     var call = callCounter++;
-    //trace('write $id:$call $state');
     return
       if (this.state != null)
         Future.sync(this.state);
       else
         this.wait.flatMap(function (resume) {
-          //trace('$id:$call $resume');
           return
             if (!resume) {
               doClose();
@@ -258,7 +252,6 @@ class ParserSink<T> extends SinkBase {
                     switch parser.eof() {
                       case Success(v):
                         doClose();
-                        //trace('set');
                         this.wait = onResult(v);//if it helps?
                         Success(Progress.EOF);
                       case Failure(e):
@@ -270,7 +263,6 @@ class ParserSink<T> extends SinkBase {
                         
                         switch d {
                           case Some(v):
-                            //trace('set');
                             this.wait = onResult(v);
                           case None:
                         }

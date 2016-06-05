@@ -380,9 +380,6 @@ private class CompoundSource extends SourceBase {
   public function new(parts)
     this.parts = parts;
   
-  override public function append(other:Source):Source 
-    return of(this, other);
-    
   override public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>> 
     return Future.async(function (cb) {
       function next()

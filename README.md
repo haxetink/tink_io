@@ -13,7 +13,9 @@ This library provides a number of helpers for I/O:
 
 ## Buffer
 
-Buffers have a relatively fat API to allow buffering binary data. It is best to read the inline comments.
+Buffers provide a relatively fat (for tink's standards) API to allow buffering binary data into `Bytes` working as [a circular buffer](https://en.wikipedia.org/wiki/Circular_buffer#How_it_works).
+
+Buffer allocation is thread safe, buffer access is not. Try to keep a buffer on one thread only, if possible.
 
 ## StreamParser
 
@@ -36,6 +38,7 @@ A sink is something you can write data to. Its interface is very simple:
 
 ```haxe
 abstract Sink {
+  function writeFull(buffer:Buffer):Surprise<Bool, Error>;
 	function write(from:Buffer):Surprise<Progress, Error>;
 	function close():Surprise<Noise, Error>;  
 }

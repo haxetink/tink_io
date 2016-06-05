@@ -29,6 +29,7 @@ class Pipe {
   
   function terminate(s) {
     onDone(buffer, s);
+    releaseBuffer();
   }
   
   static var suspended = 
@@ -38,12 +39,14 @@ class Pipe {
       new List();
     #end
   
+  dynamic function releaseBuffer() {}
+    
   function suspend() {
     if (this.bufferWidth > 0) 
       switch suspended.pop() {
         case null: read();
         case next:
-          @:privateAccess this.buffer.dispose();
+          releaseBuffer();
           suspended.add(this);
           next.resume();
       }
@@ -51,8 +54,10 @@ class Pipe {
   }
   
   function resume() {
-    if (this.buffer == null)
+    if (this.buffer == null) {
       this.buffer = Buffer.alloc(this.bufferWidth);
+      releaseBuffer = this.buffer.retain();
+    }
     this.read();
   }
   
@@ -101,9 +106,6 @@ class Pipe {
   static public function make<In, Out>(from:PipePart<In, Source>, to:PipePart<Out, Sink>, ?bufferWidth:Int, ?options: { ?end: Bool }, cb:Buffer->PipeResult<In, Out>->Void) {
     new Pipe(from, to, bufferWidth, options != null && options.end, function (buf, res) {
       cb(buf, cast res);
-      if (buf.width > 0) {
-        @:privateAccess buf.dispose();//TODO: this whole business should be less hacky
-      }
     }).resume();
   }
 }
