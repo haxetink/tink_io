@@ -13,18 +13,18 @@ typedef Sys = flash.system.System;
 class RunTests {
 
   static function main() {
-    //var a = [for (i in 0...Std.random(0)) i];
-    //if (Math.random() > 0)
-      //a = null;
-    //a.pop();
-    //a.pop();
+    #if flash
+    haxe.Log.trace = function(v, ?pos) flash.Lib.trace(v);
+    #end
     var t = new TestRunner();
     t.add(new BufferTest());
     t.add(new PipeTest());
     t.add(new StreamParserTest());
     //t.add(new TestInRunLoop());
-    if (!t.run())
-      Sys.exit(500);
+    Sys.exit(
+      if (t.run()) 0
+      else 500
+    );
   }
   
 }
