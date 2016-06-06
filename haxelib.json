@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Expand IdealSource interface. Implement inmemory-sinks properly.",
-	"version": "0.4.0",
+	"releasenote": "Minor fixes.",
+	"version": "0.4.1",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
