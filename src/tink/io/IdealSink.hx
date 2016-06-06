@@ -1,5 +1,6 @@
 package tink.io;
 
+import haxe.io.BytesBuffer;
 import tink.core.Future;
 import tink.io.Buffer;
 import tink.io.IdealSink;
@@ -10,7 +11,8 @@ using tink.CoreApi;
 
 @:forward
 abstract IdealSink(IdealSinkObject) from IdealSinkObject to IdealSinkObject to Sink {
-  
+  static public function inMemory(whenDone:Callback<BytesBuffer>, ?buffer:BytesBuffer):IdealSink
+    return new MemorySink(whenDone, buffer);
 }
 
 interface IdealSinkObject extends SinkObject {
@@ -77,4 +79,38 @@ class IdealSinkBase extends SinkBase implements IdealSinkObject {
   
   override public function close():Surprise<Noise, Error>
     return closeSafely().map(Success);
+}
+
+private class MemorySink extends IdealSinkBase {
+  var whenDone:Callback<BytesBuffer>;
+  var buffer:BytesBuffer;
+  public function new(whenDone, buffer) {
+    this.whenDone = whenDone;
+    this.buffer = switch buffer {
+      case null: new BytesBuffer();
+      case v: v;
+    }
+  }
+  
+  function writeBytes(b, pos, len) {
+    buffer.addBytes(b, pos, len);
+    return len;
+  }
+  
+  override public function writeSafely(from:Buffer):Future<Progress> 
+    return 
+      Future.sync(
+        if (this.buffer == null) Progress.EOF
+        else from.writeTo(this)
+      );
+  
+  override public function closeSafely():Future<Noise> {
+    if (buffer != null) {
+      whenDone.invoke(buffer);
+      buffer = null;
+      whenDone = null;
+    }
+    return super.closeSafely();
+  }
+    
 }

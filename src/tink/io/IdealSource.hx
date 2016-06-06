@@ -15,6 +15,9 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
 	public inline function close():Future<Noise>
     return this.closeSafely();
     
+  public inline function all():Future<Bytes>
+    return this.all();
+    
 	public inline function prepend(other:IdealSource):IdealSource
     return CompoundSource.of(other, this);
     
@@ -43,6 +46,7 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
 }
 
 interface IdealSourceObject extends SourceObject {
+  function allSafely():Future<Bytes>;
   function pipeSafelyTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end:Bool }):Future<PipeResult<Noise, Out>>;
   function readSafely(into:Buffer, max:Int = 1 << Buffer.MAX_WIDTH):Future<Progress>;
   function closeSafely():Future<Noise>;
@@ -163,6 +167,17 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
   override public function idealize(onError:Callback<Error>):IdealSource
     return this;
   
+  public function allSafely():Future<Bytes> {
+    return Future.async(function (cb) {
+      this.pipeSafelyTo(IdealSink.inMemory(function (buf) {
+        cb(buf.getBytes());
+      }), { end: true });
+    });
+  }
+   
+  public function all():Surprise<Bytes, Error>
+    return allSafely().map(Success);
+    
   public function readSafely(into:Buffer, max = 1 << Buffer.MAX_WIDTH):Future<Progress>  
     return throw 'abstract';
     
@@ -203,6 +218,19 @@ class ByteSource extends IdealSourceBase {
         pos += len;
         len;
       }
+      
+  override public function allSafely():Future<Bytes> {
+    
+    var ret = 
+      if (pos == 0) data;
+      else data.sub(pos, data.length - pos);
+      
+    data = Buffer.ZERO_BYTES;
+    pos = 0;
+    
+    return Future.sync(ret);
+  }
+  
   
   override public function append(other:Source):Source
     return 
