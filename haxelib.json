@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Some work on the API, mostly. IdealSource now has its own interface.",
-	"version": "0.3.0",
+	"releasenote": "Expand IdealSource interface. Implement inmemory-sinks properly.",
+	"version": "0.4.0",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
