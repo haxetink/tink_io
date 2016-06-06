@@ -12,8 +12,8 @@
 	"contributors": [
 		"back2dos"
 	],
-	"releasenote": "Fix parsing of std sources.",
-	"version": "0.2.1",
+	"releasenote": "Some work on the API, mostly. IdealSource now has its own interface.",
+	"version": "0.3.0",
 	"url": "http://haxetink.org/tink_io",
 	"dependencies": {
 		"tink_streams": "",
