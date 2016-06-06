@@ -16,7 +16,7 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
     return this.closeSafely();
     
   public inline function all():Future<Bytes>
-    return this.all();
+    return this.allSafely();
     
 	public inline function prepend(other:IdealSource):IdealSource
     return CompoundSource.of(other, this);
@@ -175,7 +175,7 @@ class IdealSourceBase extends SourceBase implements IdealSourceObject {
     });
   }
    
-  public function all():Surprise<Bytes, Error>
+  override public function all():Surprise<Bytes, Error>
     return allSafely().map(Success);
     
   public function readSafely(into:Buffer, max = 1 << Buffer.MAX_WIDTH):Future<Progress>  
