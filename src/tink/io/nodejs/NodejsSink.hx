@@ -55,10 +55,14 @@ class NodejsSink extends SinkBase {
         case Success(_): cb(Success(Noise));
         case Failure(f): cb(Failure(f));
       });
-      target.end(js.node.Buffer.hxFromBytes(from.content()), function () {
+      var onEnd = function () {
         from.clear();
         cb(Success(Noise));
-      });
+      }
+      switch from.content() {
+        case content if(content.length == 0): target.end(onEnd);
+        case content: target.end(js.node.Buffer.hxFromBytes(content), onEnd);
+      }
     });
   }
     
