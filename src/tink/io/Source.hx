@@ -47,6 +47,9 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
      
   public inline function split(delim:Bytes):Pair<Source, Source>
     return this.split(delim);
+    
+  public inline function transform(transformer:Transformer):Source
+    return this.transform(transformer);
   
   #if (nodejs && !macro)
   static public function ofNodeStream(name, r:js.node.stream.Readable.IReadable)
@@ -114,6 +117,7 @@ interface SourceObject {
   function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
   function parseStream<T>(parser:StreamParser<NullOr<T>>, ?rest:Callback<Source>):Stream<T>;
   function split(delim:Bytes):Pair<Source, Source>;
+  function transform(transformer:Transformer):Source;
   
 }
 
@@ -204,6 +208,10 @@ class SourceBase implements SourceObject {
       new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
       new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest)
     );
+  }
+  
+  public function transform(transformer:Transformer):Source {
+    return transformer.transform(this);
   }
 }
 
