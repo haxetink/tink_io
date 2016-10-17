@@ -83,7 +83,7 @@ class Pipe {
           terminate(if (buffer.available > 0) SinkEnded else AllWritten);
         case Success(v):
           if (repeat > 0)
-            flush(repeat - 1);
+            flush(repeat - (v == 0 ? 1 : 0));
           else
             if (buffer.writable) //TODO: find a good threshold
               read();
