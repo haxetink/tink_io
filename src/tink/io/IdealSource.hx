@@ -18,6 +18,9 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
   public inline function all():Future<Bytes>
     return this.allSafely();
     
+  public function skip(length:Int):IdealSource
+    return (this:Source).skip(length).idealize(function(_) {}); // TODO: not the best way...
+    
 	public inline function prepend(other:IdealSource):IdealSource
     return CompoundSource.of(other, this);
     
