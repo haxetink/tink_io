@@ -53,6 +53,14 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     return new tink.io.nodejs.NodejsSource(r, name);
   #end
   
+  public function skip(length:Int):Source {
+    return limit(length).pipeTo(BlackHole.INST).map(function(o) return switch o {
+      case AllWritten: Success(this);
+      case SourceFailed(e): Failure(e);
+      default: Failure(new Error('assert')); // technically unreachable, the sink is ideal
+    });
+  }
+  
   public function limit(length:Int):Source 
     return new LimitedSource(this, length);
   
