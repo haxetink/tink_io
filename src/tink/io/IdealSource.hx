@@ -21,6 +21,9 @@ abstract IdealSource(IdealSourceObject) to IdealSourceObject from IdealSourceObj
   public function skip(length:Int):IdealSource
     return (this:Source).skip(length).idealize(function(_) {}); // TODO: not the best way...
     
+  public function limit(length:Int):IdealSource
+    return (this:Source).limit(length).idealize(function(_) {}); // TODO: not the best way...
+    
 	public inline function prepend(other:IdealSource):IdealSource
     return CompoundSource.of(other, this);
     
