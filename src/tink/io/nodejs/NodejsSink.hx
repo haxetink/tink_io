@@ -7,14 +7,14 @@ import tink.io.PipeResult;
 
 using tink.CoreApi;
 
-class NodejsSink extends SinkBase<Error> { 
+class NodejsSink extends SinkBase<Error, Noise> { 
 
   var target:WrappedWritable;
   
   function new(target) 
     this.target = target;
     
-  override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error>> {
+  override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Noise>> {
     
     //TODO: consider using native behavior is source is native and options.destructive is set to true
     
@@ -28,12 +28,12 @@ class NodejsSink extends SinkBase<Error> {
     
     ret.handle(function (end) target.end());
     
-    return ret.map(function (c):PipeResult<EIn, Error> return switch c {
+    return ret.map(function (c):PipeResult<EIn, Error, Noise> return switch c {
       case Failed(e): SourceFailed(e);
       case Clogged(e, rest): SinkFailed(e, (rest : Source<EIn>));//TODO: somehow the implict conversion here will result in Source<Error> instead
       case Depleted: AllWritten;
       case Halted(rest): 
-        SinkEnded((rest : Source<EIn>));
+        SinkEnded(Noise, (rest : Source<EIn>));
     });
   }
     

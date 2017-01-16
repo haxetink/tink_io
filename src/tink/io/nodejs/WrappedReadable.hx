@@ -46,6 +46,6 @@ class WrappedReadable {
       }
                     
       attempt();
-      end.handle(cb);
-    }, true);
+      //end.handle(cb);
+    }).first(end);
 }

@@ -49,29 +49,29 @@ interface StreamParser<Result> {
   function eof(rest:ChunkCursor):Outcome<Result, Error>;
 }
 
-class ParserSink<T> extends SinkBase<Error> {
-  var parser:StreamParser<T>;
-  override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error>> {
-    var cursor = Chunk.EMPTY.cursor();
-    
-    var ret = source.forEach(function (chunk) {
-      
-      cursor.shift(chunk);
-      
-      switch parser.progress(cursor) {
-        case Progressed: 
-          return Future.sync(Resume);
-        case Done(v): 
-          return Future.sync(Finish);
-        case Failed(e): 
-          return Future.sync(Fail(e));
-      }
-    });
-    return null;
-    //return super.consume(source, options);
-  }
-  
-}
+//class ParserSink<T> extends SinkBase<Error> {
+  //var parser:StreamParser<T>;
+  //override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error>> {
+    //var cursor = Chunk.EMPTY.cursor();
+    //
+    //var ret = source.forEach(function (chunk) {
+      //
+      //cursor.shift(chunk);
+      //
+      //switch parser.progress(cursor) {
+        //case Progressed: 
+          //return Future.sync(Resume);
+        //case Done(v): 
+          //return Future.sync(Finish);
+        //case Failed(e): 
+          //return Future.sync(Fail(e));
+      //}
+    //});
+    //return null;
+    ////return super.consume(source, options);
+  //}
+  //
+//}
 
 //class ParserSink<T> extends SinkBase {
   //
