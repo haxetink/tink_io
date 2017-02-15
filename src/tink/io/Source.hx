@@ -17,6 +17,12 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   
   @:from static public function ofError(e:Error):RealSource
     return (e : Stream<Chunk, Error>);
+
+  @:from static function ofPromised(p:Promise<RealSource>):RealSource
+    return Stream.flatten(p.map(function (o) return switch o {
+      case Success(s): s;
+      case Failure(e): ofError(e);
+    }));
   
   static public function concatAll<E>(s:Stream<Chunk, E>)
     return s.reduce(Chunk.EMPTY, function (res:Chunk, cur:Chunk) return Progress(res & cur));

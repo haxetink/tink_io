@@ -16,11 +16,44 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
   from SinkObject<FailingWith, Result> 
   to SinkObject<FailingWith, Result> {
   
+  @:from static function ofError(e:Error):RealSink
+    return new ErrorSink(e);
+
+  @:from static function ofPromised(p:Promise<RealSink>):RealSink
+    return new FutureSink(p.map(function(o) return switch o {
+      case Success(v): v;
+      case Failure(e): ofError(e);
+    }));
+
   #if (nodejs && !macro)
   static public function ofNodeStream(name, r:js.node.stream.Writable.IWritable):RealSink
     return tink.io.nodejs.NodejsSink.wrap(name, r);
   #end
 
+}
+
+private class FutureSink<FailingWith, Result> extends SinkBase<FailingWith, Result> {
+  var f:Future<SinkYielding<FailingWith, Result>>;
+  public function new(f)
+    this.f = f;
+
+  override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, FailingWith, Result>>
+    return f.flatMap(function (sink) return sink.consume(source, options));
+}
+
+private class ErrorSink<Result> extends SinkBase<Error, Result> {
+  
+  var error:Error;
+
+  public function new(error)
+    this.error = error;
+
+  override function get_sealed() 
+    return false;
+
+  override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Result>>
+    // return Future.sync(PipeResult.SinkFailed(error, source));
+    return null;
 }
 
 interface SinkObject<FailingWith, Result> {
