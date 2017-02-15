@@ -1,16 +1,15 @@
 package tink.io;
 
 import tink.Chunk;
-import tink.io.IdealSink;
-import tink.io.IdealSource;
 import tink.io.PipeOptions;
 import tink.streams.Stream;
 
+using tink.io.Source;
 using tink.CoreApi;
 
-typedef RealSink = Sink<Error>;
-
 typedef Sink<FailingWith> = SinkYielding<FailingWith, Noise>;
+typedef RealSink = Sink<Error>;
+typedef IdealSink = Sink<Noise>;
 
 @:forward
 abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>) 
@@ -33,8 +32,8 @@ interface SinkObject<FailingWith, Result> {
 
 class SinkBase<FailingWith, Result> implements SinkObject<FailingWith, Result> {
   
-  public var sealed(get, never):Bool
-    function get_sealed() return true
+  public var sealed(get, never):Bool;
+    function get_sealed() return true;
   
   public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, FailingWith, Result>>
     return throw 'not implemented';

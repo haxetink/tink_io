@@ -22,7 +22,7 @@ class NodejsSink extends SinkBase<Error, Noise> {
       return target.write(c).map(function (w) return switch w {
         case Success(true): Resume;
         case Success(false): BackOff;
-        case Failure(e): Fail(e);
+        case Failure(e): Clog(e);
       })
     );
     

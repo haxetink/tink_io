@@ -7,7 +7,7 @@ import tink.streams.Stream;
 
 using tink.CoreApi;
 
-@:forward(append, prepend)
+@:forward(append, prepend, reduce)
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
   #if (nodejs && !macro)
@@ -18,6 +18,9 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   @:from static public function ofError(e:Error):RealSource
     return (e : Stream<Chunk, Error>);
   
+  static public function concatAll<E>(s:Stream<Chunk, E>)
+    return s.reduce(Chunk.EMPTY, function (res:Chunk, cur:Chunk) return Progress(res & cur));
+
   public function pipeTo<EOut, Result>(target:SinkYielding<EOut, Result>, ?options):Future<PipeResult<E, EOut, Result>> 
     return target.consume(this, options);
   
@@ -40,40 +43,21 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
 
 typedef SourceObject<E> = StreamObject<Chunk, E>;
 
-//class BufferedSource<E> extends StreamBase<Chunk, E> {
-  //
-  //var target:Source<E>;
-  //var highWaterMark:Int;
-  //
-  //public function new(target, highWaterMark) {
-    //this.target = target;
-    //this.highWaterMark = highWaterMark;
-  //}
-  //
-  //override function forEach<Safety>(handler:Handler<Chunk, Safety>):Future<Conclusion<Chunk, Safety, E>> {
-    //
-    //var buffered = Chunk.EMPTY,
-        //busy = false;
-    //
-    //return (target:Stream<Chunk, E>).forEach(function (chunk):Future<Handled<Safety>> {
-      //return 
-        //if (busy) {
-          //if (buffered.length < highWaterMark) {
-            //Future.sync(Resume);
-          //}
-        //}
-        //else {
-          //busy = true;
-          //handler.apply(chunk).handle(function (h) switch h {
-            //case BackOff:
-            //case Finish:
-            //case Resume:
-              //
-            //case Fail(e):
-          //});
-          //Future.sync(Resume);
-        //}
-    //});
-  //}
-//
-//}
+typedef RealSource = Source<Error>;
+
+class RealSourceTools {
+  static public function all(s:RealSource):Promise<Chunk>
+    return Source.concatAll(s).map(function (o) return switch o {
+      case Reduced(c): Success(c);
+      case Failed(e): Failure(e);
+    });
+}
+
+typedef IdealSource = Source<Noise>;
+
+class IdealSourceTools {
+  static public function all(s:IdealSource):Future<Chunk>
+    return Source.concatAll(s).map(function (o) return switch o {
+      case Reduced(c): c;
+    });
+}
