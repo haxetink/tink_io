@@ -13,12 +13,26 @@ enum ParseStep<Result> {
   Failed(e:Error);
 }
 
-class BytewiseParser<Result> implements StreamParser<Result> { 
+abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
+
+}
+
+class SimpleBytewiseParser<Result> extends BytewiseParser<Result> {
+  
+  var _read:Int->ParseStep<Result>;
+
+  public function new(f)
+    this._read = f;
+
+  override public function read(char:Int)
+    return _read(char); 
+}
+
+class BytewiseParser<Result> implements StreamParserObject<Result> { 
 
   function read(char:Int):ParseStep<Result> {
     return throw 'abstract';
   }
-  
   
   public function progress(cursor:ChunkCursor) {
     
@@ -44,7 +58,7 @@ class BytewiseParser<Result> implements StreamParser<Result> {
   
 }
 
-interface StreamParser<Result> {
+interface StreamParserObject<Result> {
   function progress(cursor:ChunkCursor):ParseStep<Result>;
   function eof(rest:ChunkCursor):Outcome<Result, Error>;
 }

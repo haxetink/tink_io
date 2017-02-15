@@ -37,7 +37,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return ofChunk(s);
     
   @:from static inline function ofBytes<E>(b:Bytes):Source<E>
-    return ofBytes(b);
+    return ofChunk(b);
     
 }
 
