@@ -19,10 +19,47 @@ enum ParseResult<Result, Quality> {
   Broke(e:Error):ParseResult<Result, Error>;
 }
 
+
 abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
-  static public function parse<R, Q>(s:Source<Q>, p:StreamParser<R>):Future<ParseResult<R, Q>> {
-    return Future.sync(Invalid(new Error(NotImplemented, "not implemented"), s));
+  static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finalize:Void->F):Future<ParseResult<F, Q>> {
+    var cursor = Chunk.EMPTY.cursor();
+    function mk(source:Source<Q>)
+      return source.prepend(cursor.flush());
+    return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
+      cursor.shift(chunk);
+      return switch p.progress(cursor) {
+        case Progressed: 
+          Future.sync(Resume);
+        case Done(v): 
+          consume(v).map(function (o) return if (o.resume) Resume else Finish);
+        case Failed(e): 
+          Future.sync(Clog(e));
+      }
+    }).flatMap(function (c) return switch c {
+      case Halted(rest): 
+        Future.sync(Parsed(finalize(), mk(rest)));
+      case Clogged(e, rest):
+        Future.sync(Invalid(e, mk(rest)));
+      case Failed(e):
+        Future.sync(Broke(e));
+      case Depleted:
+        switch p.eof(cursor) {
+          case Success(result):
+            consume(result).map(function (_) return Parsed(finalize(), cursor.flush()));
+          case Failure(e):
+            Future.sync(Invalid(e, cursor.flush()));
+        }     
+    });
   }
+  static public function parse<R, Q>(s:Source<Q>, p:StreamParser<R>):Future<ParseResult<R, Q>> {
+    var res = null;
+    function onResult(r) {
+      res = r;
+      return Future.sync({ resume: false });
+    }
+    return doParse(s, p, onResult, function () return res);
+  }
+  
 }
 
 class SimpleBytewiseParser<Result> extends BytewiseParser<Result> {
@@ -70,116 +107,3 @@ interface StreamParserObject<Result> {
   function progress(cursor:ChunkCursor):ParseStep<Result>;
   function eof(rest:ChunkCursor):Outcome<Result, Error>;
 }
-
-//class ParserSink<T> extends SinkBase<Error> {
-  //var parser:StreamParser<T>;
-  //override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error>> {
-    //var cursor = Chunk.EMPTY.cursor();
-    //
-    //var ret = source.forEach(function (chunk) {
-      //
-      //cursor.shift(chunk);
-      //
-      //switch parser.progress(cursor) {
-        //case Progressed: 
-          //return Future.sync(Resume);
-        //case Done(v): 
-          //return Future.sync(Finish);
-        //case Failed(e): 
-          //return Future.sync(Fail(e));
-      //}
-    //});
-    //return null;
-    ////return super.consume(source, options);
-  //}
-  //
-//}
-
-//class ParserSink<T> extends SinkBase {
-  //
-  //var parser:StreamParser<T>;
-  //var state:Outcome<Progress, Error>;
-  //var onResult:T->Future<Bool>;
-  //var wait:Future<Bool>;
-  //var worker:Worker;
-  //static var idCounter = 0;
-  //var id:Int = idCounter++;
-  //var callCounter = 0;
-  //
-  //public function new(parser, onResult, ?worker:Worker) {
-    //this.parser = parser;
-    //this.onResult = onResult;
-    //this.wait = Future.sync(true);
-    //this.worker = Worker.EAGER;
-  //}
-  //
-  //function doClose()
-    //if (state == null)
-      //state = Success(Progress.EOF);
-  //
-  //override public function write(from:Buffer):Surprise<Progress, Error> {
-    //var call = callCounter++;
-    //return
-      //if (this.state != null)
-        //Future.sync(this.state);
-      //else
-        //this.wait.flatMap(function (resume) {
-          //return
-            //if (!resume) {
-              //doClose();
-              //Future.sync(this.state);
-            //}
-            //else 
-              //worker.work(function () {
-                //var last = from.available;
-                //return
-                  //if (last == 0 && !from.writable)
-                    //switch parser.eof() {
-                      //case Success(v):
-                        //doClose();
-                        //this.wait = onResult(v);//if it helps?
-                        //Success(Progress.EOF);
-                      //case Failure(e):
-                        //state = Failure(e);
-                    //}
-                  //else
-                    //switch parser.progress(from) {
-                      //case Success(d):
-                        //
-                        //switch d {
-                          //case Some(v):
-                            //this.wait = onResult(v);
-                          //case None:
-                        //}
-                        //
-                        //Success(Progress.by(last - from.available));
-                        //
-                      //case Failure(f):
-                        //state = Failure(f);
-                    //}
-              //});
-        //});
-  //}
-  //override public function close():Surprise<Noise, Error> {
-    //doClose();
-    //return Future.sync(Success(Noise));
-  //}
-  //
-  //public function parse(s:Source, ?options)
-    //return Future.async(function (cb:Outcome<Source, Error>->Void) {
-      //Pipe.make(s, this, Buffer.sufficientWidthFor(parser.minSize()), function (rest:Buffer, res:PipeResult<Error, Error>) 
-        //cb(switch res {
-          //case AllWritten:
-            //Success(s);
-          //case SinkEnded:
-            //Success(s.prepend((rest.content() : Source)));
-          //case SinkFailed(e):
-            //Failure(e);
-          //case SourceFailed(e):
-            //Failure(e);
-        //})
-      //);
-    //});
-  //
-//}
-//

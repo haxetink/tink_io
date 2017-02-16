@@ -3,8 +3,8 @@ package tink.io.nodejs;
 import js.node.Buffer;
 import tink.io.Sink;
 import tink.streams.Stream;
-import tink.io.PipeResult;
 
+using tink.io.PipeResult;
 using tink.CoreApi;
 
 class NodejsSink extends SinkBase<Error, Noise> { 
@@ -28,13 +28,7 @@ class NodejsSink extends SinkBase<Error, Noise> {
     
     ret.handle(function (end) target.end());
     
-    return ret.map(function (c):PipeResult<EIn, Error, Noise> return switch c {
-      case Failed(e): SourceFailed(e);
-      case Clogged(e, rest): SinkFailed(e, (rest : Source<EIn>));//TODO: somehow the implict conversion here will result in Source<Error> instead
-      case Depleted: AllWritten;
-      case Halted(rest): 
-        SinkEnded(Noise, (rest : Source<EIn>));
-    });
+    return ret.map(function (c) return c.toResult(Noise));
   }
     
   static public function wrap(name, native)

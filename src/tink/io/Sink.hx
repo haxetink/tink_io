@@ -40,6 +40,8 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
     return tink.io.nodejs.NodejsSink.wrap(name, r);
   #end
 
+
+
 }
 
 private class FutureSink<FailingWith, Result> extends SinkBase<FailingWith, Result> {
