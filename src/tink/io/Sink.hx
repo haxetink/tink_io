@@ -16,6 +16,16 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
   from SinkObject<FailingWith, Result> 
   to SinkObject<FailingWith, Result> {
   
+  static var EMPTY_SOURCE:IdealSource = Empty.make();
+
+  public function end():Promise<Bool>
+    return
+      if (this.sealed) false;
+      else this.consume(EMPTY_SOURCE, { end: true }).map(function (r) return switch r {
+        case AllWritten | SinkEnded(_): Success(true);
+        case SinkFailed(e, _): Failure(e);
+      });
+
   @:from static function ofError(e:Error):RealSink
     return new ErrorSink(e);
 
@@ -52,8 +62,7 @@ private class ErrorSink<Result> extends SinkBase<Error, Result> {
     return false;
 
   override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Result>>
-    // return Future.sync(PipeResult.SinkFailed(error, source));
-    return null;
+    return Future.sync(cast PipeResult.SinkFailed(error, source));//TODO: there's something rotten here - the cast should be unnecessary
 }
 
 interface SinkObject<FailingWith, Result> {

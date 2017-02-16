@@ -13,8 +13,16 @@ enum ParseStep<Result> {
   Failed(e:Error);
 }
 
-abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
+enum ParseResult<Result, Quality> {
+  Parsed(data:Result, rest:Source<Quality>):ParseResult<Result, Quality>;
+  Invalid(e:Error, rest:Source<Quality>):ParseResult<Result, Quality>;
+  Broke(e:Error):ParseResult<Result, Error>;
+}
 
+abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
+  static public function parse<R, Q>(s:Source<Q>, p:StreamParser<R>):Future<ParseResult<R, Q>> {
+    return Future.sync(Invalid(new Error(NotImplemented, "not implemented"), s));
+  }
 }
 
 class SimpleBytewiseParser<Result> extends BytewiseParser<Result> {

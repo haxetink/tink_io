@@ -7,7 +7,7 @@ import tink.streams.Stream;
 
 using tink.CoreApi;
 
-@:forward(append, prepend, reduce)
+@:forward(reduce)
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
   #if (nodejs && !macro)
@@ -30,10 +30,10 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   public function pipeTo<EOut, Result>(target:SinkYielding<EOut, Result>, ?options):Future<PipeResult<E, EOut, Result>> 
     return target.consume(this, options);
   
-  public inline function append(that:Source<E>) 
+  public inline function append(that:Source<E>):Source<E> 
     return this.append(that);
     
-  public inline function prepend(that:Source<E>) 
+  public inline function prepend(that:Source<E>):Source<E> 
     return this.prepend(that);
     
   @:from static inline function ofChunk<E>(chunk:Chunk):Source<E>
@@ -47,7 +47,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     
 }
 
-typedef SourceObject<E> = StreamObject<Chunk, E>;
+typedef SourceObject<E> = StreamObject<Chunk, E>;//TODO: make this an actual subtype to add functionality on
 
 typedef RealSource = Source<Error>;
 
