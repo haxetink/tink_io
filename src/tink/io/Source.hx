@@ -10,6 +10,9 @@ using tink.CoreApi;
 @:forward(reduce)
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
+  public var depleted(get, never):Bool;
+    inline function get_depleted() return this.depleted;
+
   #if (nodejs && !macro)
   static public inline function ofNodeStream(name, r:js.node.stream.Readable.IReadable, ?options:{ ?chunkSize: Int, ?onEnd:Void->Void }):RealSource {
     if (options == null) 
