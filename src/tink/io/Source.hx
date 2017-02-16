@@ -11,8 +11,11 @@ using tink.CoreApi;
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
   #if (nodejs && !macro)
-  static public inline function ofNodeStream(name, r:js.node.stream.Readable.IReadable, ?chunkSize = 0x10000):RealSource
-    return tink.io.nodejs.NodejsSource.wrap(name, r, chunkSize);
+  static public inline function ofNodeStream(name, r:js.node.stream.Readable.IReadable, ?options:{ ?chunkSize: Int, ?onEnd:Void->Void }):RealSource {
+    if (options == null) 
+      options = {};
+    return tink.io.nodejs.NodejsSource.wrap(name, r, options.chunkSize, options.onEnd);
+  }
   #end
   
   @:from static public function ofError(e:Error):RealSource
@@ -56,6 +59,12 @@ class RealSourceTools {
     return Source.concatAll(s).map(function (o) return switch o {
       case Reduced(c): Success(c);
       case Failed(e): Failure(e);
+    });
+
+  static public function parse<R>(s:RealSource, p:StreamParser<R>):Promise<Pair<R, RealSource>>
+    return StreamParser.parse(s, p).map(function (r) return switch r {
+      case Parsed(data, rest): Success(new Pair(data, rest));
+      case Invalid(e, _) | Broke(e): Failure(e);
     });
 }
 

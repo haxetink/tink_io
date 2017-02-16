@@ -15,7 +15,7 @@ class NodejsSource extends Chained<Chunk, Error> {
       }));
     }, true));    
   
-  static public function wrap(name, native, chunkSize)
-    return new NodejsSource(new WrappedReadable(name, native, chunkSize));
+  static public function wrap(name, native, chunkSize, onEnd)
+    return new NodejsSource(new WrappedReadable(name, native, chunkSize, onEnd));
   
 }

@@ -12,20 +12,26 @@ class WrappedReadable {
   var end:Surprise<Null<Chunk>, Error>;
   var chunkSize:Int;
       
-  public function new(name, native, chunkSize) {
+  public function new(name, native, chunkSize, onEnd) {
     this.name = name;
     this.native = native;
     this.chunkSize = chunkSize;
-    
     end = Future.async(function (cb) {
       native.once('end', function () cb(Success(null)));
       native.once('error', function (e:{ code:String, message:String }) cb(Failure(new Error('${e.code} - Failed reading from $name because ${e.message}'))));      
     });
-    
+    if (onEnd != null)
+      end.handle(function () 
+        js.Node.process.nextTick(onEnd)
+      );
   }
-  
+
   public function read():Promise<Null<Chunk>>
-    return Future.async(function (cb) {
+    return Future.async(function (yield) {
+      function cb(buf) {
+        trace(buf);
+        yield(buf);
+      }
       function attempt() {
         try 
           switch native.read(chunkSize) {
