@@ -28,10 +28,14 @@ class WrappedBuffer implements ChunkObject {
     return buffer.toString();
     
   public function toBytes():Bytes {
-    var copy = Buffer.allocUnsafe(buffer.length);
+    var copy = alloc(buffer.length);
     buffer.copy(copy);
     return copy.hxToBytes();
   }
+
+  static var alloc:Int->Buffer = 
+    if (untyped __js__('"allocUnsafe" in Buffer')) Buffer.allocUnsafe;
+    else function (size) return new Buffer(size);
     
   public function blitTo(target:Bytes, offset:Int):Void
     return buffer.copy(Buffer.hxFromBytes(target), offset);
