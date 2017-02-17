@@ -27,11 +27,7 @@ class WrappedReadable {
   }
 
   public function read():Promise<Null<Chunk>>
-    return Future.async(function (yield) {
-      function cb(buf) {
-        trace(buf);
-        yield(buf);
-      }
+    return Future.async(function (cb) {
       function attempt() {
         try 
           switch native.read(chunkSize) {
