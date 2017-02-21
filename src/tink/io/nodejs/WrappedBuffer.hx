@@ -2,7 +2,7 @@ package tink.io.nodejs;
 
 import haxe.io.Bytes;
 import js.node.Buffer;
-import tink.Chunk;
+import tink.chunk.*;
 
 class WrappedBuffer implements ChunkObject {
   

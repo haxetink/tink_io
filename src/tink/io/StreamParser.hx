@@ -1,6 +1,6 @@
 package tink.io;
 
-import tink.Chunk.ChunkCursor;
+import tink.chunk.ChunkCursor;
 import tink.io.PipeOptions;
 import tink.io.Sink;
 import tink.streams.Stream;
