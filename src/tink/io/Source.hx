@@ -77,7 +77,7 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
     #if (nodejs && !macro)
       ofNodeStream('stdin', js.Node.process.stdin)
     #elseif sys
-      ofOutput('stdin', Sys.stdin())
+      ofInput('stdin', Sys.stdin())
     #else
       Empty.instance
     #end
