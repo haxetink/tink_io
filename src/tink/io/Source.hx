@@ -73,6 +73,16 @@ abstract Source(SourceObject) from SourceObject to SourceObject {
   static public function ofInput(name:String, input:Input, ?worker:Worker):Source
     return new StdSource(name, input, worker);
     
+  static public var stdin(default, null):Source =
+    #if (nodejs && !macro)
+      ofNodeStream('stdin', js.Node.process.stdin)
+    #elseif sys
+      ofOutput('stdin', Sys.stdin())
+    #else
+      Empty.instance
+    #end
+  ;
+    
   @:from static public function flatten(s:Surprise<Source, Error>):Source
     return new FutureSource(s);    
     
