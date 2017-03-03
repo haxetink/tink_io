@@ -142,8 +142,11 @@ class StdSink extends SinkBase {
   override public function write(from:Buffer):Surprise<Progress, Error> 
     return 
       worker.work(
-        function () return from.tryWritingTo(name, target)
-      );
+        function () {
+          var ret = from.tryWritingTo(name, target);
+          target.flush();
+          return ret;
+        });
   
   override public function close() {
     return 
