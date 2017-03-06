@@ -41,8 +41,7 @@ class Splitter implements StreamParser<Bytes> {
   function writeBytes(bytes:Bytes, start:Int, length:Int) {
     
     if (!atEnd) {
-      length -= delim.length;
-      if (length < 0) length = 0;
+      if (length < delim.length) length = 0;
     }
     
     if (length > 0) {
