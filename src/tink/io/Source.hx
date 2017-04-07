@@ -10,6 +10,9 @@ using tink.CoreApi;
 @:forward(reduce)
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
+
+  public static var EMPTY(default, null):IdealSource = Empty.make();
+  
   public var depleted(get, never):Bool;
     inline function get_depleted() return this.depleted;
 
@@ -23,7 +26,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   
   public function chunked():Stream<Chunk, E>
     return this;
-
+  
   @:from static public function ofError(e:Error):RealSource
     return (e : Stream<Chunk, Error>);
 

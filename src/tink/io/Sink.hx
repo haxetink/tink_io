@@ -15,17 +15,18 @@ typedef IdealSink = Sink<Noise>;
 abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>) 
   from SinkObject<FailingWith, Result> 
   to SinkObject<FailingWith, Result> {
-  
-  static var EMPTY_SOURCE:IdealSource = Empty.make();
+    
+  public static var BLACKHOLE(default, null):IdealSink = Blackhole.inst;
 
   public function end():Promise<Bool>
     return
       if (this.sealed) false;
-      else this.consume(EMPTY_SOURCE, { end: true }).map(function (r) return switch r {
+      else this.consume(Source.EMPTY, { end: true }).map(function (r) return switch r {
         case AllWritten | SinkEnded(_): Success(true);
         case SinkFailed(e, _): Failure(e);
       });
 
+    
   @:from static function ofError(e:Error):RealSink
     return new ErrorSink(e);
 
@@ -42,6 +43,19 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
 
 
 
+}
+
+private class Blackhole extends SinkBase<Noise, Noise> {
+  public static var inst(default, null):Blackhole = new Blackhole();
+  
+  function new() {}
+
+  override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Noise, Noise>>
+    return source.forEach(function(_) return Resume).map(function(o):PipeResult<EIn, Noise, Noise> return switch o {
+      case Depleted: AllWritten;
+      case Halted(_): throw 'unreachable';
+      case Failed(e): SourceFailed(e);
+    });
 }
 
 private class FutureSink<FailingWith, Result> extends SinkBase<FailingWith, Result> {
