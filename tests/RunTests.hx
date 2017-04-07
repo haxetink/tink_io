@@ -4,7 +4,7 @@ import haxe.Timer;
 import js.node.Buffer;
 import js.node.Fs;
 import js.node.http.ServerResponse;
-import tink.io.RealSource;
+import tink.io.Source;
 import tink.io.Sink;
 //import tink.io.nodejs.NodejsFdStream;
 import tink.io.nodejs.NodejsSink;
@@ -18,11 +18,7 @@ import tink.streams.Stream;
 
 import tink.Chunk;
 
-
-import tink.io.IdealSource;
-import tink.io.Source;
-
-import tink.io.BytewiseParser;
+import tink.io.StreamParser;
 
 using tink.CoreApi;
 
@@ -62,14 +58,14 @@ class RunTests {
       
       js.node.Fs.createReadStream(file).pipe(res, { end: true } ); return;
       //f
-      Source.ofNodeStream('some file', js.node.Fs.createReadStream(file), chunkSize)
+      Source.ofNodeStream('some file', js.node.Fs.createReadStream(file), {chunkSize: chunkSize})
         .pipeTo(Sink.ofNodeStream('response body', res), { end: true });
 
     }).listen(2000);
     return;
     if (true) {
       repeat(100, function () {  
-        var f = Source.ofNodeStream('some file', js.node.Fs.createReadStream(file), chunkSize);
+        var f = Source.ofNodeStream('some file', js.node.Fs.createReadStream(file), {chunkSize: chunkSize});
         //var f = new NodejsFdStream('some file', 
         var copy = Sink.ofNodeStream('other file', js.node.Fs.createWriteStream('copy.blob'));
         

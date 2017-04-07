@@ -4,14 +4,14 @@ import tink.streams.Stream;
 
 using tink.CoreApi;
 
-class NodejsSource extends Chained<Chunk, Error> {
+class NodejsSource extends Generator<Chunk, Error> {
   
   function new(target:WrappedReadable) 
     super(Future.async(function (cb) {
       target.read().handle(function (o) cb(switch o {
-        case Success(null): ChainEnd;
-        case Success(chunk): ChainLink(chunk, new NodejsSource(target));
-        case Failure(e): ChainError(e);
+        case Success(null): End;
+        case Success(chunk): Link(chunk, new NodejsSource(target));
+        case Failure(e): Fail(e);
       }));
     }, true));    
   
