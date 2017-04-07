@@ -24,7 +24,7 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finalize:Void->F):Future<ParseResult<F, Q>> {
     var cursor = Chunk.EMPTY.cursor();
     function mk(source:Source<Q>)
-      return source.prepend(cursor.flush());
+      return source.prepend(cursor.right());
     return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
       cursor.shift(chunk);
       return switch p.progress(cursor) {
