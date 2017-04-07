@@ -7,9 +7,9 @@ import js.node.http.ServerResponse;
 import tink.io.Source;
 import tink.io.Sink;
 //import tink.io.nodejs.NodejsFdStream;
+import tink.unit.*;
+import tink.testrunner.*;
 import tink.io.nodejs.NodejsSink;
-import haxe.unit.TestCase;
-import haxe.unit.TestRunner;
 import tink.io.nodejs.NodejsSource;
 import tink.io.nodejs.WrappedBuffer;
 import tink.io.nodejs.WrappedReadable;
@@ -24,10 +24,10 @@ using tink.CoreApi;
 
 class RunTests {
   
-  static var cases:Array<Void->TestCase> = [
+  // static var cases:Array<Void->TestCase> = [
     
-  ];
-  static function main() {
+  // ];
+  static function _main() {
     
     //var src = Source.ofNodeStream('some file', js.node.Fs.createReadStream('example.blob'), 0x100);
     //var copy = Sink.ofNodeStream('other file', js.node.Fs.createWriteStream('copy.blob'));
@@ -62,7 +62,7 @@ class RunTests {
         .pipeTo(Sink.ofNodeStream('response body', res), { end: true });
 
     }).listen(2000);
-    return;
+    // return;
     if (true) {
       repeat(100, function () {  
         var f = Source.ofNodeStream('some file', js.node.Fs.createReadStream(file), {chunkSize: chunkSize});
@@ -108,17 +108,12 @@ class RunTests {
       //});
     //}
     //
-    return;
-    
-    var runner = new TestRunner();
-    
-    for (c in cases)
-      runner.add(c());
-    
-    travix.Logger.exit(
-      if (runner.run()) 0
-      else 500
-    );
+  }
+  
+  static function main() {
+    Runner.run(TestBatch.make([
+      new TestPipe(),
+    ])).handle(Runner.exit);
   }
   
 }
