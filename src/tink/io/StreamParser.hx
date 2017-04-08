@@ -42,6 +42,8 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
         Future.sync(Invalid(e, mk(rest)));
       case Failed(e):
         Future.sync(Broke(e));
+      case Depleted if(cursor.currentPos < cursor.length): 
+        Future.sync(Parsed(finalize(), mk(Chunk.EMPTY)));
       case Depleted:
         switch p.eof(cursor) {
           case Success(result):
@@ -60,6 +62,41 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
     return doParse(s, p, onResult, function () return res);
   }
   
+}
+
+class Splitter extends BytewiseParser<Chunk> {
+  var delim:Chunk;
+  var buf = Chunk.EMPTY;
+  public function new(delim) {
+    this.delim = delim;
+  }
+  override function read(char:Int):ParseStep<Chunk> {
+    
+    buf = buf & String.fromCharCode(char);
+    return if(buf.length > delim.length) {
+      var bcursor = buf.cursor();
+      bcursor.moveBy(buf.length - delim.length);
+      var dcursor = delim.cursor();
+      
+      for(i in 0...delim.length) {
+        if(bcursor.currentByte != dcursor.currentByte) {
+          return Progressed;
+        }
+        else {
+          bcursor.next();
+          dcursor.next();
+        }
+      }
+      
+      bcursor.moveBy(-delim.length);
+      Done(bcursor.left());
+      
+    } else {
+      
+      Progressed;
+      
+    }
+  }
 }
 
 class SimpleBytewiseParser<Result> extends BytewiseParser<Result> {

@@ -12,7 +12,7 @@ class TestPipe {
   
   public function new() {}
   
-  public function testCopyFile() {
+  public function copyFile() {
     var fsrc = 'example.blob';
     var fdst = 'copy.blob';
     if(!fsrc.exists()) fsrc.saveContent('some random content');

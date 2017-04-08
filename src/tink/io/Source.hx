@@ -87,4 +87,10 @@ class IdealSourceTools {
     return Source.concatAll(s).map(function (o) return switch o {
       case Reduced(c): c;
     });
+    
+  static public function parse<R>(s:IdealSource, p:StreamParser<R>):Promise<Pair<R, IdealSource>>
+    return StreamParser.parse(s, p).map(function (r) return switch r {
+      case Parsed(data, rest): Success(new Pair(data, rest));
+      case Invalid(e, _): Failure(e);
+    });
 }

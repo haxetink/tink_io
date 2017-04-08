@@ -113,6 +113,7 @@ class RunTests {
   static function main() {
     Runner.run(TestBatch.make([
       new TestPipe(),
+      new TestSource(),
     ])).handle(Runner.exit);
   }
   
