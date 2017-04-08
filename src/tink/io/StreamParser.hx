@@ -72,6 +72,8 @@ class Splitter extends BytewiseParser<Chunk> {
   }
   override function read(char:Int):ParseStep<Chunk> {
     
+    if(char == -1) return Done(buf);
+    
     buf = buf & String.fromCharCode(char);
     return if(buf.length > delim.length) {
       var bcursor = buf.cursor();
@@ -88,6 +90,7 @@ class Splitter extends BytewiseParser<Chunk> {
         }
       }
       
+      buf = Chunk.EMPTY;
       bcursor.moveBy(-delim.length);
       Done(bcursor.left());
       
