@@ -90,9 +90,9 @@ class Splitter extends BytewiseParser<Chunk> {
         }
       }
       
+      var out = Done(buf.slice(0, bcursor.currentPos - delim.length));
       buf = Chunk.EMPTY;
-      bcursor.moveBy(-delim.length);
-      Done(bcursor.left());
+      return out;
       
     } else {
       
