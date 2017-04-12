@@ -52,7 +52,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return this.prepend(that);
     
   public function skip(len:Int):Source<E> {
-    return chunked().regroup(function(chunks:Array<Chunk>) {
+    return this.regroup(function(chunks:Array<Chunk>) {
       var chunk = chunks[0];
       if(len <= 0) return Converted(chunk);
       var length = chunk.length;
@@ -63,7 +63,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   }
     
   public function limit(len:Int):Source<E> {
-    return chunked().regroup(function(chunks:Array<Chunk>) {
+    return this.regroup(function(chunks:Array<Chunk>) {
       if(len <= 0) return Swallowed;
       var chunk = chunks[0];
       var length = chunk.length;
