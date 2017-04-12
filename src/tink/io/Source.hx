@@ -100,6 +100,9 @@ class RealSourceTools {
       case Parsed(data, rest): Success(new Pair(data, rest));
       case Invalid(e, _) | Broke(e): Failure(e);
     });
+    
+  static public function idealize(s:RealSource, rescue:Error->Void):IdealSource
+    return (s.chunked().idealize(function(e) {rescue(e); return cast Source.EMPTY;}):StreamObject<Chunk, Noise>);
 }
 
 typedef IdealSource = Source<Noise>;
