@@ -51,6 +51,35 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   public inline function prepend(that:Source<E>):Source<E> 
     return this.prepend(that);
     
+  public function skip(len:Int):Source<E> {
+    var skipped = 0;
+    return chunked().regroup(function(chunks:Array<Chunk>) {
+      var chunk = chunks[0];
+      if(skipped == -1) return Converted(chunk);
+      var length = chunk.length;
+      return
+        if(skipped + length > len) {
+          var out = chunk.slice(len - skipped, length);
+          skipped = -1;
+          Converted(out);
+        } else {
+          skipped += length;
+          Swallowed;
+        }
+    });
+  }
+    
+  public function limit(len:Int):Source<E> {
+    return chunked().regroup(function(chunks:Array<Chunk>) {
+      var chunk = chunks[0];
+      if(len < 0) return Swallowed;
+      var length = chunk.length;
+      var out = Converted(if(len < length) chunk.slice(0, len) else chunk);
+      len -= length;
+      return out;
+    });
+  }
+    
   @:from static inline function ofChunk<E>(chunk:Chunk):Source<E>
     return new Single(chunk);
     

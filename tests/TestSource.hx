@@ -32,7 +32,42 @@ class TestSource {
 		return asserts.done();
 	}
 	
-	public function parse() {
+	public function skip() {
+		var s1:IdealSource = '01234';
+		var s2:IdealSource = '56789';
+		
+		s1.append(s2).skip(3).all().handle(function(o) asserts.assert(o.toString() == '3456789'));
+		s1.append(s2).skip(7).all().handle(function(o) asserts.assert(o.toString() == '789'));
+		
+		return asserts.done();
+	}
+	
+	public function limit() {
+		var s1:IdealSource = '01234';
+		var s2:IdealSource = '56789';
+		
+		s1.append(s2).limit(3).all().handle(function(o) asserts.assert(o.toString() == '012'));
+		s1.append(s2).limit(7).all().handle(function(o) asserts.assert(o.toString() == '0123456'));
+		
+		return asserts.done();
+	}
+	
+	public function skipAndLimit() {
+		var s1:IdealSource = '01234';
+		var s2:IdealSource = '56789';
+		
+		s1.append(s2).skip(1).limit(3).all().handle(function(o) asserts.assert(o.toString() == '123'));
+		s1.append(s2).skip(6).limit(3).all().handle(function(o) asserts.assert(o.toString() == '678'));
+		s1.append(s2).skip(2).limit(6).all().handle(function(o) asserts.assert(o.toString() == '234567'));
+		
+		s1.append(s2).limit(4).skip(2).all().handle(function(o) asserts.assert(o.toString() == '23'));
+		s1.append(s2).limit(8).skip(3).all().handle(function(o) asserts.assert(o.toString() == '34567'));
+		s1.append(s2).limit(8).skip(6).all().handle(function(o) asserts.assert(o.toString() == '67'));
+		
+		return asserts.done();
+	}
+	
+	public function split() {
 		var s1:IdealSource = '01234';
 		var s2:IdealSource = '56789';
 		
