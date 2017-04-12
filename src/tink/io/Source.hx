@@ -64,8 +64,8 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     
   public function limit(len:Int):Source<E> {
     return chunked().regroup(function(chunks:Array<Chunk>) {
-      var chunk = chunks[0];
       if(len <= 0) return Swallowed;
+      var chunk = chunks[0];
       var length = chunk.length;
       var out = Converted(if(len < length) chunk.slice(0, len) else chunk);
       len -= length;
