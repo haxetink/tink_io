@@ -52,27 +52,20 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return this.prepend(that);
     
   public function skip(len:Int):Source<E> {
-    var skipped = 0;
     return chunked().regroup(function(chunks:Array<Chunk>) {
       var chunk = chunks[0];
-      if(skipped == -1) return Converted(chunk);
+      if(len <= 0) return Converted(chunk);
       var length = chunk.length;
-      return
-        if(skipped + length > len) {
-          var out = chunk.slice(len - skipped, length);
-          skipped = -1;
-          Converted(out);
-        } else {
-          skipped += length;
-          Swallowed;
-        }
+      var out = if(len < length) Converted(chunk.slice(len, length)) else Swallowed;
+      len -= length;
+      return out;
     });
   }
     
   public function limit(len:Int):Source<E> {
     return chunked().regroup(function(chunks:Array<Chunk>) {
       var chunk = chunks[0];
-      if(len < 0) return Swallowed;
+      if(len <= 0) return Swallowed;
       var length = chunk.length;
       var out = Converted(if(len < length) chunk.slice(0, len) else chunk);
       len -= length;

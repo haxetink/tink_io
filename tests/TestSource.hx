@@ -37,6 +37,7 @@ class TestSource {
 		var s2:IdealSource = '56789';
 		
 		s1.append(s2).skip(3).all().handle(function(o) asserts.assert(o.toString() == '3456789'));
+		s1.append(s2).skip(5).all().handle(function(o) asserts.assert(o.toString() == '56789'));
 		s1.append(s2).skip(7).all().handle(function(o) asserts.assert(o.toString() == '789'));
 		
 		return asserts.done();
@@ -47,6 +48,7 @@ class TestSource {
 		var s2:IdealSource = '56789';
 		
 		s1.append(s2).limit(3).all().handle(function(o) asserts.assert(o.toString() == '012'));
+		s1.append(s2).limit(5).all().handle(function(o) asserts.assert(o.toString() == '01234'));
 		s1.append(s2).limit(7).all().handle(function(o) asserts.assert(o.toString() == '0123456'));
 		
 		return asserts.done();
