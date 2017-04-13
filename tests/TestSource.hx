@@ -3,6 +3,7 @@ package;
 import tink.io.StreamParser;
 
 using tink.io.Source;
+using tink.CoreApi;
 
 @:asserts
 class TestSource {
@@ -73,13 +74,11 @@ class TestSource {
 		var s1:IdealSource = '01234';
 		var s2:IdealSource = '56789';
 		
-		s1.append(s2).parse(new Splitter('45')).handle(function(o) switch o {
-			case Success(parsed):
-				asserts.assert(parsed.a.toString() == '0123');
-				parsed.b.all().handle(function(o) asserts.assert(o.toString() == '6789'));
-			case Failure(e):
-				asserts.fail(e);
-		});
+		var split = s1.append(s2).split('45');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '0123'));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '6789'));
+		split.delimiter.handle(function(o) asserts.assert(o.orNull() == '45'));
+		
 		return asserts.done();
 	}
 }

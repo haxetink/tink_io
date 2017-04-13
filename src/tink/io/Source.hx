@@ -2,6 +2,7 @@ package tink.io;
 
 import haxe.io.Bytes;
 import tink.io.Sink;
+import tink.io.StreamParser;
 import tink.streams.IdealStream;
 import tink.streams.Stream;
 
@@ -101,11 +102,26 @@ class RealSourceTools {
       case Invalid(e, _) | Broke(e): Failure(e);
     });
     
+  static public function split(s:RealSource, delim:Chunk):SplitResult<Error> {
+    var s = parse(s, new Splitter(delim));
+    // TODO: make all these lazy
+    return {
+      before: Stream.promise(s.next(function(p):RealSource return p.a)),
+      delimiter: s.next(function(_) return delim),
+      after: Stream.promise(s.next(function(p):RealSource return p.b)),
+    }
+  }
+    
   static public function idealize(s:RealSource, rescue:Error->Void):IdealSource
     return (s.chunked().idealize(function(e) {rescue(e); return cast Source.EMPTY;}):StreamObject<Chunk, Noise>);
 }
 
 typedef IdealSource = Source<Noise>;
+typedef SplitResult<E> = {
+  before:Source<E>,
+  delimiter:Promise<Chunk>,
+  after:Source<E>,
+}
 
 class IdealSourceTools {
   static public function all(s:IdealSource):Future<Chunk>
@@ -118,4 +134,14 @@ class IdealSourceTools {
       case Parsed(data, rest): Success(new Pair(data, rest));
       case Invalid(e, _): Failure(e);
     });
+    
+  static public function split(s:IdealSource, delim:Chunk):SplitResult<Noise> {
+    var s = parse(s, new Splitter(delim));
+    // TODO: make all these lazy
+    return {
+      before: RealSourceTools.idealize((Stream.promise(s.next(function(p):IdealSource return p.a)):RealSource), function(_) {}),
+      delimiter: s.next(function(_) return delim),
+      after: RealSourceTools.idealize((Stream.promise(s.next(function(p):IdealSource return p.b)):RealSource), function(_) {}),
+    }
+  }
 }
