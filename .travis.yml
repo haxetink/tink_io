@@ -11,4 +11,4 @@ install:
   - npm install
 
 script:
-  - npm run travix node
+  - npm run travix node .
