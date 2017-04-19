@@ -1,0 +1,5 @@
+-D tink_io=0.0.0
+-cp src
+
+-lib tink_chunk
+-lib tink_streams
