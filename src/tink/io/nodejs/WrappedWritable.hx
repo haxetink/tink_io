@@ -39,6 +39,10 @@ class WrappedWritable {
   
   public function write(chunk:Chunk):Promise<Bool> 
     return Future.async(function (cb) {
+      if(chunk.length == 0) {
+        cb(Success(true));
+        return;
+      }
       var buf = 
         if (Buffer.isBuffer(untyped chunk.buffer)) untyped chunk.buffer;
         else Buffer.hxFromBytes(chunk.toBytes());//TODO: the above branch is ugly and this one is wasteful
