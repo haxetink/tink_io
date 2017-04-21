@@ -4,6 +4,7 @@ import tink.io.Source;
 import tink.io.Sink;
 import tink.io.PipeResult;
 
+using tink.CoreApi;
 using sys.io.File;
 using sys.FileSystem;
 
@@ -32,4 +33,26 @@ class TestPipe {
     
     return asserts;
   }
+  
+  public function empty() {
+    var dst = 'empty.blob';
+    var sink = Sink.ofNodeStream(dst, js.node.Fs.createWriteStream(dst));
+    function _pipe(src:IdealSource) {
+      return src.pipeTo(sink).map(function(x) {
+        asserts.assert(x == AllWritten);
+        return Noise;
+      });
+    }
+    
+    Future.ofMany([
+      _pipe(''),
+      _pipe(Source.EMPTY),
+    ]).handle(function(_) {
+      asserts.assert(dst.getBytes().length == 0);
+      asserts.done();
+    });
+    
+    return asserts;
+  }
+  
 }
