@@ -26,6 +26,7 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
     function mk(source:Source<Q>)
       return source.prepend(cursor.right());
     return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
+      if(chunk.length == 0) return Future.sync(Resume); // TODO: review this fix
       cursor.shift(chunk);
       return switch p.progress(cursor) {
         case Progressed: 
