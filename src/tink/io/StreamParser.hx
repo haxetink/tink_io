@@ -56,7 +56,7 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   static public function parse<R, Q>(s:Source<Q>, p:StreamParser<R>):Future<ParseResult<R, Q>> {
     var res = null;
     function onResult(r) {
-      res = r;
+      if(res == null) res = r;
       return Future.sync({ resume: false });
     }
     return doParse(s, p, onResult, function () return res);
@@ -64,18 +64,18 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   
 }
 
-class Splitter extends BytewiseParser<Chunk> {
+class Splitter extends BytewiseParser<Option<Chunk>> {
   var delim:Chunk;
   var buf = Chunk.EMPTY;
   public function new(delim) {
     this.delim = delim;
   }
-  override function read(char:Int):ParseStep<Chunk> {
+  override function read(char:Int):ParseStep<Option<Chunk>> {
     
-    if(char == -1) return Done(buf);
+    if(char == -1) return Done(None);
     
     buf = buf & String.fromCharCode(char);
-    return if(buf.length > delim.length) {
+    return if(buf.length >= delim.length) {
       var bcursor = buf.cursor();
       bcursor.moveBy(buf.length - delim.length);
       var dcursor = delim.cursor();
@@ -89,8 +89,7 @@ class Splitter extends BytewiseParser<Chunk> {
           dcursor.next();
         }
       }
-      
-      var out = Done(buf.slice(0, bcursor.currentPos - delim.length));
+      var out = Done(Some(buf.slice(0, bcursor.currentPos - delim.length)));
       buf = Chunk.EMPTY;
       return out;
       

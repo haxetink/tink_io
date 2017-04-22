@@ -6,6 +6,7 @@ import tink.io.StreamParser;
 import tink.streams.IdealStream;
 import tink.streams.Stream;
 
+using tink.io.Source;
 using tink.CoreApi;
 
 @:forward(reduce)
@@ -102,12 +103,18 @@ class RealSourceTools {
       case Invalid(e, _) | Broke(e): Failure(e);
     });
     
-  static public function split(s:RealSource, delim:Chunk):SplitResult<Error> {
-    var s = parse(s, new Splitter(delim));
+  static public function split(src:RealSource, delim:Chunk):SplitResult<Error> {
+    var s = parse(src, new Splitter(delim));
     // TODO: make all these lazy
     return {
-      before: Stream.promise(s.next(function(p):RealSource return p.a)),
-      delimiter: s.next(function(_) return delim),
+      before: Stream.promise(s.next(function(p):RealSource return switch p.a {
+        case Some(chunk): chunk;
+        case None: src;
+      })),
+      delimiter: s.next(function(p) return switch p.a {
+        case Some(_): delim;
+        case None: new Error(NotFound, 'Delimiter not found');
+      }),
       after: Stream.promise(s.next(function(p):RealSource return p.b)),
     }
   }
@@ -136,12 +143,12 @@ class IdealSourceTools {
     });
     
   static public function split(s:IdealSource, delim:Chunk):SplitResult<Noise> {
-    var s = parse(s, new Splitter(delim));
+    var s = RealSourceTools.split((cast s:RealSource), delim);
     // TODO: make all these lazy
     return {
-      before: RealSourceTools.idealize((Stream.promise(s.next(function(p):IdealSource return p.a)):RealSource), function(_) {}),
-      delimiter: s.next(function(_) return delim),
-      after: RealSourceTools.idealize((Stream.promise(s.next(function(p):IdealSource return p.b)):RealSource), function(_) {}),
+      before: s.before.idealize(function(e) {}),
+      delimiter: s.delimiter,
+      after: s.after.idealize(function(e) {}),
     }
   }
 }

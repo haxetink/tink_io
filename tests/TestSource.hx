@@ -1,6 +1,7 @@
 package;
 
 import tink.io.StreamParser;
+import tink.Chunk;
 
 using tink.io.Source;
 using tink.CoreApi;
@@ -77,7 +78,23 @@ class TestSource {
 		var split = s1.append(s2).split('45');
 		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '0123'));
 		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '6789'));
-		split.delimiter.handle(function(o) asserts.assert(o.orNull() == '45'));
+		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == '45'));
+		
+		var s1:IdealSource = '12';
+		var split = s1.split('2');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '1'));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == ''));
+		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == '2'));
+		
+		var split = s1.split('1');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == ''));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '2'));
+		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == '1'));
+		
+		var split = s1.split('3');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '12'));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == ''));
+		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == ''));
 		
 		return asserts.done();
 	}
