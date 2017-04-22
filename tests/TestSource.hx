@@ -96,6 +96,20 @@ class TestSource {
 		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == ''));
 		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == ''));
 		
+		var s1:IdealSource = '12131415';
+		var split = s1.split('1');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == ''));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '2131415'));
+		var split = split.after.split('1');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '2'));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '31415'));
+		var split = split.after.split('1');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '3'));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '415'));
+		var split = split.after.split('1');
+		split.before.all().handle(function(chunk) asserts.assert(chunk.toString() == '4'));
+		split.after.all().handle(function(chunk) asserts.assert(chunk.toString() == '5'));
+		
 		return asserts.done();
 	}
 }
