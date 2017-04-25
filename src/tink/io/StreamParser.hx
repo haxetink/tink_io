@@ -23,6 +23,7 @@ enum ParseResult<Result, Quality> {
 abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
   static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finalize:Void->F):Future<ParseResult<F, Q>> {
     var cursor = Chunk.EMPTY.cursor();
+    var resume = true;
     function mk(source:Source<Q>)
       return source.prepend(cursor.right());
     return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
@@ -32,7 +33,10 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
         case Progressed: 
           Future.sync(Resume);
         case Done(v): 
-          consume(v).map(function (o) return if (o.resume) Resume else Finish);
+          consume(v).map(function (o) {
+            resume = o.resume;
+            return if (resume) Resume else Finish;
+          });
         case Failed(e): 
           Future.sync(Clog(e));
       }
@@ -45,6 +49,8 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
         Future.sync(Broke(e));
       case Depleted if(cursor.currentPos < cursor.length): 
         Future.sync(Parsed(finalize(), mk(Chunk.EMPTY)));
+      case Depleted if(!resume):
+          Future.sync(Parsed(finalize(), cursor.flush()));
       case Depleted:
         switch p.eof(cursor) {
           case Success(result):
@@ -57,7 +63,7 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   static public function parse<R, Q>(s:Source<Q>, p:StreamParser<R>):Future<ParseResult<R, Q>> {
     var res = null;
     function onResult(r) {
-      if(res == null) res = r;
+      res = r;
       return Future.sync({ resume: false });
     }
     return doParse(s, p, onResult, function () return res);
