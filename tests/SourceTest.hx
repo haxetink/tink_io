@@ -7,7 +7,7 @@ using tink.io.Source;
 using tink.CoreApi;
 
 @:asserts
-class TestSource {
+class SourceTest {
 	public function new() {}
 	
 	public function append() {

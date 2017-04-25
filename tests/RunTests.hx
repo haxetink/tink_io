@@ -112,8 +112,9 @@ class RunTests {
   
   static function main() {
     Runner.run(TestBatch.make([
-      new TestPipe(),
-      new TestSource(),
+      new PipeTest(),
+      new SourceTest(),
+      new ParserTest(),
     ])).handle(Runner.exit);
   }
   

@@ -9,7 +9,7 @@ using sys.io.File;
 using sys.FileSystem;
 
 @:asserts
-class TestPipe {
+class PipeTest {
   
   public function new() {}
   
