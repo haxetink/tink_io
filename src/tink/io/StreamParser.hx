@@ -40,7 +40,10 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
             case Done(v): 
               consume(v).map(function (o) {
                 resume = o.resume;
-                if (resume && cursor.currentPos < cursor.length) next() else cb(Finish);
+                if (resume) {
+                  if(cursor.currentPos < cursor.length) next() else cb(Resume);
+                } else
+                  cb(Finish);
               });
             case Failed(e): 
               cb(Clog(e));

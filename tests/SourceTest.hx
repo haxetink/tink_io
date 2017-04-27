@@ -117,13 +117,23 @@ class SourceTest {
 	public function parseStream() {
 		var s1:IdealSource = '01234';
 		var stream = s1.parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
-		stream.collect().handle(function(o) return switch o {
+		stream.collect().handle(function(o) switch o {
 			case Success(items):
 				asserts.assert(items.length == 6); // TODO: this probably should be 5
-				asserts.done();
 			case Failure(e):
 				asserts.fail(e);
 		});
-		return asserts;
+		
+		var s1:IdealSource = '012';
+		var s2:IdealSource = '34';
+		var stream = s1.append(s2).parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
+		stream.collect().handle(function(o) switch o {
+			case Success(items):
+				asserts.assert(items.length == 6); // TODO: this probably should be 5
+			case Failure(e):
+				asserts.fail(e);
+		});
+		
+		return asserts.done();
 	}
 }
