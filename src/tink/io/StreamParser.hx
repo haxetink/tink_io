@@ -4,6 +4,8 @@ import tink.chunk.ChunkCursor;
 import tink.io.PipeOptions;
 import tink.io.Sink;
 import tink.streams.Stream;
+import tink.streams.RealStream;
+import tink.streams.Accumulator;
 
 using tink.CoreApi;
 
@@ -29,17 +31,23 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
     return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
       if(chunk.length == 0) return Future.sync(Resume); // TODO: review this fix
       cursor.shift(chunk);
-      return switch p.progress(cursor) {
-        case Progressed: 
-          Future.sync(Resume);
-        case Done(v): 
-          consume(v).map(function (o) {
-            resume = o.resume;
-            return if (resume) Resume else Finish;
-          });
-        case Failed(e): 
-          Future.sync(Clog(e));
-      }
+      
+      return Future.async(function(cb) {
+        function next() {
+          switch p.progress(cursor) {
+            case Progressed: 
+              cb(Resume);
+            case Done(v): 
+              consume(v).map(function (o) {
+                resume = o.resume;
+                if (resume && cursor.currentPos < cursor.length) next() else cb(Finish);
+              });
+            case Failed(e): 
+              cb(Clog(e));
+          }
+        }
+        next();
+      });
     }).flatMap(function (c) return switch c {
       case Halted(rest): 
         Future.sync(Parsed(finalize(), mk(rest)));
@@ -69,6 +77,17 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
     return doParse(s, p, onResult, function () return res);
   }
   
+  static public function parseStream<R, Q>(s:Source<Q>, p:StreamParser<R>):RealStream<R> {
+    var accumulator = new Accumulator<R, Error>();
+    function onResult(data) {
+      accumulator.yield(Data(data));
+      return Future.sync({ resume: true });
+    }
+    doParse(s, p, onResult, function () return null).handle(function(o) {
+      accumulator.yield(End);
+    });
+    return accumulator;
+  }
 }
 
 class Splitter extends BytewiseParser<Option<Chunk>> {

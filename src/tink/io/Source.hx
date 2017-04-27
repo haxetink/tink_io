@@ -4,6 +4,7 @@ import haxe.io.Bytes;
 import tink.io.Sink;
 import tink.io.StreamParser;
 import tink.streams.IdealStream;
+import tink.streams.RealStream;
 import tink.streams.Stream;
 
 using tink.io.Source;
@@ -141,6 +142,9 @@ class IdealSourceTools {
       case Parsed(data, rest): Success(new Pair(data, rest));
       case Invalid(e, _): Failure(e);
     });
+    
+  static public function parseStream<R>(s:IdealSource, p:StreamParser<R>):RealStream<R>
+    return StreamParser.parseStream(s, p);
     
   static public function split(s:IdealSource, delim:Chunk):SplitResult<Noise> {
     var s = RealSourceTools.split((cast s:RealSource), delim);
