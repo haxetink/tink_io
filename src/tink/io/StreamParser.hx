@@ -86,8 +86,9 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
       accumulator.yield(Data(data));
       return Future.sync({ resume: true });
     }
-    doParse(s, p, onResult, function () return null).handle(function(o) {
-      accumulator.yield(End);
+    doParse(s, p, onResult, function () return null).handle(function(o) switch o {
+      case Parsed(_): accumulator.yield(End);
+      case Invalid(e, _) | Broke(e): accumulator.yield(Fail(e));
     });
     return accumulator;
   }
