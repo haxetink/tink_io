@@ -1,6 +1,7 @@
 package;
 
 import tink.io.StreamParser;
+import tink.unit.Assert.*;
 import tink.Chunk;
 
 using tink.io.Source;
@@ -109,6 +110,29 @@ class SourceTest {
 		var split = split.after.split('1');
 		split.before.all().handle(function(chunk) asserts.assert(chunk == '4'));
 		split.after.all().handle(function(chunk) asserts.assert(chunk == '5'));
+		
+		return asserts.done();
+	}
+	
+	public function parseStream() {
+		var s1:IdealSource = '01234';
+		var stream = s1.parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
+		stream.collect().handle(function(o) switch o {
+			case Success(items):
+				asserts.assert(items.length == 5);
+			case Failure(e):
+				asserts.fail(e);
+		});
+		
+		var s1:IdealSource = '012';
+		var s2:IdealSource = '34';
+		var stream = s1.append(s2).parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
+		stream.collect().handle(function(o) switch o {
+			case Success(items):
+				asserts.assert(items.length == 5);
+			case Failure(e):
+				asserts.fail(e);
+		});
 		
 		return asserts.done();
 	}
