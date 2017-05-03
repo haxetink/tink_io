@@ -26,8 +26,19 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finalize:Void->F):Future<ParseResult<F, Q>> {
     var cursor = Chunk.EMPTY.cursor();
     var resume = true;
-    function mk(source:Source<Q>)
-      return source.prepend(cursor.right());
+    function mk(source:Source<Q>) {
+      return if(cursor.currentPos < cursor.length)
+        source.prepend(cursor.right());
+      else
+        source;
+    }
+      
+    function flush():Source<Q>
+      return switch cursor.flush() {
+        case c if(c.length == 0): cast Source.EMPTY;
+        case c: c;
+      }
+      
     return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
       if(chunk.length == 0) return Future.sync(Resume); // TODO: review this fix
       cursor.shift(chunk);
@@ -52,7 +63,7 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
         next();
       });
     }).flatMap(function (c) return switch c {
-      case Halted(rest): 
+      case Halted(rest):
         Future.sync(Parsed(finalize(), mk(rest)));
       case Clogged(e, rest):
         Future.sync(Invalid(e, mk(rest)));
@@ -61,13 +72,13 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
       case Depleted if(cursor.currentPos < cursor.length): 
         Future.sync(Parsed(finalize(), mk(Chunk.EMPTY)));
       case Depleted if(!resume):
-          Future.sync(Parsed(finalize(), cursor.flush()));
+        Future.sync(Parsed(finalize(), flush()));
       case Depleted:
         switch p.eof(cursor) {
           case Success(result):
-            consume(result).map(function (_) return Parsed(finalize(), cursor.flush()));
+            consume(result).map(function (_) return Parsed(finalize(), flush()));
           case Failure(e):
-            Future.sync(Invalid(e, cursor.flush()));
+            Future.sync(Invalid(e, flush()));
         }     
     });
   }
@@ -81,16 +92,17 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   }
   
   static public function parseStream<R, Q>(s:Source<Q>, p:StreamParser<R>):RealStream<R> {
-    var accumulator = new Accumulator<R, Error>();
-    function onResult(data) {
-      accumulator.yield(Data(data));
-      return Future.sync({ resume: true });
-    }
-    doParse(s, p, onResult, function () return null).handle(function(o) switch o {
-      case Parsed(_): accumulator.yield(End);
-      case Invalid(e, _) | Broke(e): accumulator.yield(Fail(e));
+    return Generator.stream(function next(step) {
+      if(s.depleted)
+        step(End);
+      else 
+        parse(s, p).handle(function(o) switch o {
+          case Parsed(result, rest):
+            s = rest;
+            step(Link(result, Generator.stream(next)));
+          case Invalid(e, _) | Broke(e): step(Fail(e));
+      });
     });
-    return accumulator;
   }
 }
 

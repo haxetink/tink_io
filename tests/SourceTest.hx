@@ -119,7 +119,7 @@ class SourceTest {
 		var stream = s1.parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
 		stream.collect().handle(function(o) switch o {
 			case Success(items):
-				asserts.assert(items.length == 6); // TODO: this probably should be 5
+				asserts.assert(items.length == 5);
 			case Failure(e):
 				asserts.fail(e);
 		});
@@ -129,7 +129,7 @@ class SourceTest {
 		var stream = s1.append(s2).parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
 		stream.collect().handle(function(o) switch o {
 			case Success(items):
-				asserts.assert(items.length == 6); // TODO: this probably should be 5
+				asserts.assert(items.length == 5);
 			case Failure(e):
 				asserts.fail(e);
 		});
