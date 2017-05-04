@@ -1,6 +1,6 @@
-# @install: lix --silent download https://github.com/haxetink/tink_streams/archive/e0c13c320d54d61e69110f26bf7f6d2fe0af48b0.tar.gz into tink_streams/0.1.0/github/e0c13c320d54d61e69110f26bf7f6d2fe0af48b0
+# @install: lix --silent download https://github.com/haxetink/tink_streams/archive/37262d5994b1d67c03815ffee9a0b8db9234f276.tar.gz into tink_streams/0.1.0/github/37262d5994b1d67c03815ffee9a0b8db9234f276
 -D tink_streams=0.1.0
--cp ${HAXESHIM_LIBCACHE}/tink_streams/0.1.0/github/e0c13c320d54d61e69110f26bf7f6d2fe0af48b0/src
+-cp ${HAXESHIM_LIBCACHE}/tink_streams/0.1.0/github/37262d5994b1d67c03815ffee9a0b8db9234f276/src
 # temp for development, delete this file when pure branch merged
 -D pure
 -lib tink_core

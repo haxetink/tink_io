@@ -45,14 +45,16 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
       
       return Future.async(function(cb) {
         function next() {
+          cursor.shift();
+          var lastPos = cursor.currentPos;
           switch p.progress(cursor) {
-            case Progressed: 
-              cb(Resume);
+            case Progressed:
+              if(lastPos != cursor.currentPos && cursor.currentPos < cursor.length) next() else cb(Resume);
             case Done(v): 
               consume(v).map(function (o) {
                 resume = o.resume;
                 if (resume) {
-                  if(cursor.currentPos < cursor.length) next() else cb(Resume);
+                  if(lastPos != cursor.currentPos && cursor.currentPos < cursor.length) next() else cb(Resume);
                 } else
                   cb(Finish);
               });
