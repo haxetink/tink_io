@@ -37,10 +37,15 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
     }));
 
   #if (nodejs && !macro)
-  static public function ofNodeStream(name, r:js.node.stream.Writable.IWritable):RealSink
+  static public inline function ofNodeStream(name, r:js.node.stream.Writable.IWritable):RealSink
     return tink.io.nodejs.NodejsSink.wrap(name, r);
   #end
 
+  static public function ofOutput(name:String, target:haxe.io.Output, ?options:{ ?worker:Worker }):RealSink
+    return new tink.io.std.OutputSink(name, target, switch options {
+      case null | { worker: null }: Worker.get();
+      case { worker: w }: w;
+    });
 
 
 }

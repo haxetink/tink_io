@@ -26,7 +26,8 @@ class NodejsSink extends SinkBase<Error, Noise> {
       })
     );
     
-    ret.handle(function (end) target.end());
+    if (options.end)
+      ret.handle(function (end) target.end());
     
     return ret.map(function (c) return c.toResult(Noise));
   }

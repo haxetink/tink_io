@@ -13,7 +13,6 @@ using tink.CoreApi;
 @:forward(reduce)
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
-
   public static var EMPTY(default, null):IdealSource = Empty.make();
   
   public var depleted(get, never):Bool;
@@ -26,6 +25,15 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return tink.io.nodejs.NodejsSource.wrap(name, r, options.chunkSize, options.onEnd);
   }
   #end
+
+  static public inline function ofInput(name, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
+    if (options == null)
+      options = {};
+    return new tink.io.std.InputSource(name, input, options.worker.ensure(), haxe.io.Bytes.alloc(switch options.chunkSize {
+      case null: 0x10000;
+      case v: v;
+    }), 0);
+  }
   
   public function chunked():Stream<Chunk, E>
     return this;
