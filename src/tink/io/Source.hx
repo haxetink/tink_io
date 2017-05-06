@@ -119,6 +119,9 @@ class RealSourceTools {
       after: Stream.promise(s.next(function(p):RealSource return p.b)),
     }
   }
+  
+  static public function parseStream<R>(s:RealSource, p:StreamParser<R>):RealStream<R>
+    return StreamParser.parseStream(s, p);
     
   static public function idealize(s:RealSource, rescue:Error->Void):IdealSource
     return (s.chunked().idealize(function(e) {rescue(e); return cast Source.EMPTY;}):StreamObject<Chunk, Noise>);
