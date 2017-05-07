@@ -7,14 +7,18 @@ using tink.CoreApi;
 class InputSource extends Generator<Chunk, Error> {
   public function new(name:String, target:Input, worker:Worker, buf:Bytes, offset:Int) {
     
+    function next(buf, offset) 
+      return new InputSource(name, target, worker, buf, offset);
+
     var free = buf.length - offset;
 
     super(Future.async(function (cb) {
       worker.work(function () {
         return try {
           var read = target.readBytes(buf, offset, free);
+          
           if (read == 0) 
-            Link(tink.Chunk.EMPTY, this);
+            Link(tink.Chunk.EMPTY, next(buf, offset));
           else {
 
             var nextOffset = 
@@ -27,7 +31,7 @@ class InputSource extends Generator<Chunk, Error> {
 
             Link(
               (buf:Chunk).slice(offset, offset + read),
-              new InputSource(name, target, worker, nextBuf, nextOffset)
+              next(nextBuf, nextOffset)
             );
           }
         }
@@ -37,7 +41,7 @@ class InputSource extends Generator<Chunk, Error> {
         catch (e:haxe.io.Error) 
           switch e {
             case Blocked: 
-              Link(tink.Chunk.EMPTY, this);
+              Link(tink.Chunk.EMPTY, next(buf, offset));
             default: 
               Fail(Error.withData('Failed to read from $name', e));
           }

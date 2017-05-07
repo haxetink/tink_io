@@ -21,7 +21,7 @@ class OutputSink extends tink.io.Sink.SinkBase<Error, Noise> {
     var rest = Chunk.EMPTY;
 
     var ret = source.forEach(function (c:Chunk) return Future.async(function (cb) {
-
+      
       var pos = 0,
           bytes = c.toBytes();
 

@@ -1,3 +1,4 @@
 *.blob
 bin
 node_modules
+/travix.n
