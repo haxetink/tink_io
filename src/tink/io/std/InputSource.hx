@@ -42,6 +42,8 @@ class InputSource extends Generator<Chunk, Error> {
           switch e {
             case Blocked: 
               Link(tink.Chunk.EMPTY, next(buf, offset));
+            case Custom(v) if(Std.string(v) == 'ssl@ssl_recv'):
+              End; // FIXME: remove this case when issue resolved: https://github.com/HaxeFoundation/haxe/issues/6244
             default: 
               Fail(Error.withData('Failed to read from $name', e));
           }
