@@ -15,6 +15,9 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   
   public static var EMPTY(default, null):IdealSource = Empty.make();
   
+  @:to function dirty():Source<Error>
+    return cast this;
+  
   public var depleted(get, never):Bool;
     inline function get_depleted() return this.depleted;
 
@@ -131,8 +134,8 @@ class RealSourceTools {
   static public function parseStream<R>(s:RealSource, p:StreamParser<R>):RealStream<R>
     return StreamParser.parseStream(s, p);
     
-  static public function idealize(s:RealSource, rescue:Error->Void):IdealSource
-    return (s.chunked().idealize(function(e) {rescue(e); return cast Source.EMPTY;}):StreamObject<Chunk, Noise>);
+  static public function idealize(s:RealSource, rescue:Error->RealSource):IdealSource
+    return (s.chunked().idealize(rescue):StreamObject<Chunk, Noise>);
 }
 
 typedef IdealSource = Source<Noise>;
@@ -161,9 +164,9 @@ class IdealSourceTools {
     var s = RealSourceTools.split((cast s:RealSource), delim);
     // TODO: make all these lazy
     return {
-      before: s.before.idealize(function(e) {}),
+      before: s.before.idealize(function(e) return Source.EMPTY),
       delimiter: s.delimiter,
-      after: s.after.idealize(function(e) {}),
+      after: s.after.idealize(function(e) return Source.EMPTY),
     }
   }
 }
