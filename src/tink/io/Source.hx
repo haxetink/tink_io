@@ -77,11 +77,16 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   }
     
   public function limit(len:Int):Source<E> {
+    if(len == 0) return cast Source.EMPTY;
     return this.regroup(function(chunks:Array<Chunk>) {
-      if(len <= 0) return Converted(Empty.make());
+      if(len <= 0) return Terminated(None);
       var chunk = chunks[0];
       var length = chunk.length;
-      var out = Converted(Stream.single(if(len < length) chunk.slice(0, len) else chunk));
+      var out = 
+        if(len == length)
+          Terminated(Some(Stream.single(chunk)));
+        else
+          Converted(Stream.single(if(len < length) chunk.slice(0, len) else chunk));
       len -= length;
       return out;
     });
