@@ -5,7 +5,6 @@ import tink.io.PipeOptions;
 import tink.io.Sink;
 import tink.streams.Stream;
 import tink.streams.RealStream;
-import tink.streams.Accumulator;
 
 using tink.CoreApi;
 
