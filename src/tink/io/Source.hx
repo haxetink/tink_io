@@ -27,6 +27,30 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
       options = {};
     return tink.io.nodejs.NodejsSource.wrap(name, r, options.chunkSize, options.onEnd);
   }
+  
+  public function toNodeStream():js.node.stream.Readable.IReadable {
+    var native = @:privateAccess new js.node.stream.PassThrough(); // https://github.com/HaxeFoundation/hxnodejs/pull/91
+    
+    var source = chunked();
+    function write() {
+      source.forEach(function(chunk:Chunk) {
+        var ok = native.write(js.node.Buffer.hxFromBytes(chunk.toBytes()));
+        return ok ? Resume : Finish;
+      }).handle(function(o) switch o {
+        case Depleted:
+          native.end();
+        case Halted(rest):
+          source = rest;
+          native.once('drain', write);
+        case Failed(e):
+          native.emit('error', new js.Error(e.message));
+      });
+    }
+    
+    write();
+    
+    return native;
+  }
   #end
 
   static public inline function ofInput(name, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
