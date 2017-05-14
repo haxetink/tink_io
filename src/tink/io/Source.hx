@@ -89,6 +89,9 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   public inline function prepend(that:Source<E>):Source<E> 
     return this.prepend(that);
     
+  public inline function transform<A>(transformer:Transformer<E, A>):Source<A>
+    return transformer.transform(this);
+    
   public function skip(len:Int):Source<E> {
     return this.regroup(function(chunks:Array<Chunk>) {
       var chunk = chunks[0];
