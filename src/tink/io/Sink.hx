@@ -25,7 +25,9 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
         case AllWritten | SinkEnded(_): Success(true);
         case SinkFailed(e, _): Failure(e);
       });
-
+      
+  @:to function dirty():Sink<Error>
+    return cast this;
     
   @:from static function ofError(e:Error):RealSink
     return new ErrorSink(e);
