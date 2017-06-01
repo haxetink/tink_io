@@ -15,7 +15,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   
   public static var EMPTY(default, null):IdealSource = Empty.make();
   
-  @:to function dirty():Source<Error>
+  @:to inline function dirty():Source<Error>
     return cast this;
   
   public var depleted(get, never):Bool;
