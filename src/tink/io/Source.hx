@@ -22,7 +22,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     inline function get_depleted() return this.depleted;
 
   #if (nodejs && !macro)
-  static public inline function ofNodeStream(name, r:js.node.stream.Readable.IReadable, ?options:{ ?chunkSize: Int, ?onEnd:Void->Void }):RealSource {
+  @:noUsing static public inline function ofNodeStream(name:String, r:js.node.stream.Readable.IReadable, ?options:{ ?chunkSize: Int, ?onEnd:Void->Void }):RealSource {
     if (options == null) 
       options = {};
     return tink.io.nodejs.NodejsSource.wrap(name, r, options.chunkSize, options.onEnd);
@@ -53,7 +53,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   }
   #end
 
-  static public inline function ofInput(name, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
+  @:noUsing static public inline function ofInput(name:String, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
     if (options == null)
       options = {};
     return new tink.io.std.InputSource(name, input, options.worker.ensure(), haxe.io.Bytes.alloc(switch options.chunkSize {
