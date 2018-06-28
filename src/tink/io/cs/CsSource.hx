@@ -9,7 +9,11 @@ import cs.system.AsyncCallback;
 using tink.CoreApi;
 
 class CsSource extends Generator<Chunk, Error> {
-	function new(stream:CsStream, size:Int = 1024) {
+	var name:String;
+	
+	function new(name, stream:CsStream, size:Int = 1024) {
+		this.name = name;
+		
 		var buffer = new cs.NativeArray(size);
 		super(Future.async(function(cb) {
 			stream.BeginRead(buffer, 0, size, new AsyncCallback(function(ar) {
@@ -23,12 +27,12 @@ class CsSource extends Generator<Chunk, Error> {
 						} else {
 							buffer;
 						}
-						Link((Bytes.ofData(buffer):Chunk), new CsSource(stream, size));
+						Link((Bytes.ofData(buffer):Chunk), new CsSource(name, stream, size));
 				});
 			}), null);
 		}));
 	}
 	
-	static public function wrap(stream:CsStream, size:Int = 1024) 
-		return new CsSource(stream, size);
+	static public function wrap(name, stream:CsStream, size:Int = 1024) 
+		return new CsSource(name, stream, size);
 }
