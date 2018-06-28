@@ -49,6 +49,17 @@ class PipeTest {
           js.node.Fs.createReadStream(name), 
           { chunkSize: chunkSize }
         );
+      #elseif cs
+        Source.ofCsStream(
+          'Input from file $name', 
+          new cs.system.io.FileStream(
+            name,
+            cs.system.io.FileMode.Open,
+            cs.system.io.FileAccess.Read,
+            cs.system.io.FileShare.ReadWrite
+          ),
+          { chunkSize: chunkSize }
+        );
       #elseif sys
         Source.ofInput(
           'Input from file $name', 
@@ -64,6 +75,13 @@ class PipeTest {
     return
       #if nodejs
         Sink.ofNodeStream('Output to file $name', js.node.Fs.createWriteStream(name));
+      #elseif cs
+        Sink.ofCsStream('Output to file $name', new cs.system.io.FileStream(
+          name,
+          cs.system.io.FileMode.OpenOrCreate,
+          cs.system.io.FileAccess.Write,
+          cs.system.io.FileShare.ReadWrite
+      ));
       #elseif sys
         Sink.ofOutput('Output to file $name', sys.io.File.write(name, true));
       #else
