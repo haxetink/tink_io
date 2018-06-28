@@ -52,6 +52,11 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return native;
   }
   #end
+  
+  @:noUsing static public inline function ofCsStream(name:String, r:cs.system.io.Stream, ?options:{ ?chunkSize: Int }):RealSource {
+    var chunkSize = options == null || options.chunkSize == null ? 1 << 16 : options.chunkSize;
+    return tink.io.cs.CsSource.wrap(r, chunkSize);
+  }
 
   @:noUsing static public inline function ofInput(name:String, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
     if (options == null)
