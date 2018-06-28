@@ -22,7 +22,7 @@ enum ParseResult<Result, Quality> {
 
 
 abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
-  static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finalize:Void->F):Future<ParseResult<F, Q>> {
+  static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finish:Void->F):Future<ParseResult<F, Q>> {
     var cursor = Chunk.EMPTY.cursor();
     var resume = true;
     function mk(source:Source<Q>) {
@@ -65,19 +65,19 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
       });
     }).flatMap(function (c) return switch c {
       case Halted(rest):
-        Future.sync(Parsed(finalize(), mk(rest)));
+        Future.sync(Parsed(finish(), mk(rest)));
       case Clogged(e, rest):
         Future.sync(Invalid(e, mk(rest)));
       case Failed(e):
         Future.sync(Broke(e));
       case Depleted if(cursor.currentPos < cursor.length): 
-        Future.sync(Parsed(finalize(), mk(Chunk.EMPTY)));
+        Future.sync(Parsed(finish(), mk(Chunk.EMPTY)));
       case Depleted if(!resume):
-        Future.sync(Parsed(finalize(), flush()));
+        Future.sync(Parsed(finish(), flush()));
       case Depleted:
         switch p.eof(cursor) {
           case Success(result):
-            consume(result).map(function (_) return Parsed(finalize(), flush()));
+            consume(result).map(function (_) return Parsed(finish(), flush()));
           case Failure(e):
             Future.sync(Invalid(e, flush()));
         }     
