@@ -11,7 +11,7 @@ using tink.CoreApi;
 class CsSource extends Generator<Chunk, Error> {
 	var name:String;
 	
-	function new(name, stream:CsStream, size:Int = 1024) {
+	function new(name, stream:CsStream, size:Int) {
 		this.name = name;
 		
 		var buffer = new cs.NativeArray(size);
@@ -33,6 +33,6 @@ class CsSource extends Generator<Chunk, Error> {
 		}));
 	}
 	
-	static public function wrap(name, stream:CsStream, size:Int = 1024) 
+	static inline public function wrap(name, stream, size) 
 		return new CsSource(name, stream, size);
 }
