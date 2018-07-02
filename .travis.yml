@@ -1,27 +1,18 @@
 sudo: required
 dist: trusty
 
-language: haxe
+language: node_js
+node_js: 6
 
-haxe:
-  - "3.2.1"
-  - development
-  
-matrix:
-  allow_failures:
-    - haxe: development
-    
+os:
+  - linux
+      
 install:
-  - haxelib install travix
-  - haxelib run travix install
+  - npm install
 
 script:
-  # - haxelib run travix interp # TODO: investigate stack overflow
-  - haxelib run travix neko
-  - haxelib run travix python
-  - haxelib run travix node
-  # - haxelib run travix flash
-  - haxelib run travix java
-  - haxelib run travix cpp
-  - haxelib run travix cs
-  - haxelib run travix php
+  - npm run travix node
+  - npm run travix neko
+  #- npm run travix java
+  #- npm run travix interp
+  - npm run travix php

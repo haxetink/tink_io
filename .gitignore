@@ -1,2 +1,4 @@
-/bin/java
-/bin/cs
+*.blob
+bin
+node_modules
+/travix.n
