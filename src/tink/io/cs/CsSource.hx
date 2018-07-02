@@ -1,32 +1,38 @@
 package tink.io.cs;
 
+import tink.streams.Stream;
+import tink.Chunk;
 import haxe.io.Bytes;
-import tink.io.Buffer;
-import tink.io.Source;
+import cs.system.io.Stream as CsStream;
+import cs.system.AsyncCallback;
 
 using tink.CoreApi;
 
-class CsSource extends SourceBase {
-  var target:cs.system.io.Stream;
-  var name:String;
-  var worker:Worker;
-  public function new(target, name, ?worker:Worker) {
-    this.target = target;
-    this.name = name;
-    this.worker = worker.ensure();
-  }
-  
-  function readBytes(into:Bytes, start:Int, length:Int) {
-    return target.Read(into.getData(), start, length);
-  }
-  
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error> {
-    return worker.work(function () return into.tryReadingFrom(name, this, max));
-  }
-  
-  override public function close():Surprise<Noise, Error> {
-    target.Close();
-    return Future.sync(Success(Noise));
-  }
-  
+class CsSource extends Generator<Chunk, Error> {
+	var name:String;
+	
+	function new(name, stream:CsStream, size:Int = 1024) {
+		this.name = name;
+		
+		var buffer = new cs.NativeArray(size);
+		super(Future.async(function(cb) {
+			stream.BeginRead(buffer, 0, size, new AsyncCallback(function(ar) {
+				cb(switch stream.EndRead(ar) {
+					case 0: End;
+					case read: 
+						var buffer = if(read < size) {
+							var copy = new cs.NativeArray(read);
+							cs.system.Array.Copy(buffer, 0, copy, 0, read);
+							copy;
+						} else {
+							buffer;
+						}
+						Link((Bytes.ofData(buffer):Chunk), new CsSource(name, stream, size));
+				});
+			}), null);
+		}));
+	}
+	
+	static public function wrap(name, stream:CsStream, size:Int = 1024) 
+		return new CsSource(name, stream, size);
 }

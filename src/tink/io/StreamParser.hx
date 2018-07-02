@@ -1,136 +1,191 @@
 package tink.io;
 
-import haxe.ds.Option;
-import haxe.io.Bytes;
-import haxe.io.BytesBuffer;
+import tink.chunk.ChunkCursor;
+import tink.io.PipeOptions;
+import tink.io.Sink;
+import tink.streams.Stream;
+import tink.streams.RealStream;
+
 using tink.CoreApi;
 
-/**
- * Parsers, once created, should not cause side effects outside themselves, otherwise you will get really weird bugs.
- */
-interface StreamParser<Result> {
-  function minSize():Int;
-  function progress(buffer:Buffer):Outcome<Option<Result>, Error>;
-  function eof():Outcome<Result, Error>;
-}
-
 enum ParseStep<Result> {
-  Failed(e:Error);
-  Done(r:Result);
   Progressed;
+  Done(r:Result);
+  Failed(e:Error);
 }
 
-class Splitter implements StreamParser<Bytes> {
-  var atEnd:Bool;
-  var out:BytesBuffer;
-  var delim:Bytes;
-  var result:Option<Bytes>;
-  
-  public function minSize()
-    return delim.length;
-  
-  public function new(delim) {
-    this.delim = delim;
-    //reset();
-  }
-  
-  function reset() {
-    this.out = new BytesBuffer();
-  }
-  
-  function writeBytes(bytes:Bytes, start:Int, length:Int) {
-    
-    if (!atEnd) {
-      if (length < delim.length) length = 0;
+enum ParseResult<Result, Quality> {
+  Parsed(data:Result, rest:Source<Quality>):ParseResult<Result, Quality>;
+  Invalid(e:Error, rest:Source<Quality>):ParseResult<Result, Quality>;
+  Broke(e:Error):ParseResult<Result, Error>;
+}
+
+
+abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObject<Result> to StreamParserObject<Result> {
+  static function doParse<R, Q, F>(source:Stream<Chunk, Q>, p:StreamParserObject<R>, consume:R->Future<{ resume: Bool }>, finish:Void->F):Future<ParseResult<F, Q>> {
+    var cursor = Chunk.EMPTY.cursor();
+    var resume = true;
+    function mk(source:Source<Q>) {
+      return if(cursor.currentPos < cursor.length)
+        source.prepend(cursor.right());
+      else
+        source;
     }
-    
-    if (length > 0) {
-      for (i in 0...length) {
-        var found = true;
-        for (dpos in 0...delim.length) {
-          if (bytes.get(start + i + dpos) != delim.get(dpos)) {
-            found = false;
-            break;
+      
+    function flush():Source<Q>
+      return switch cursor.flush() {
+        case c if(c.length == 0): cast Source.EMPTY;
+        case c: c;
+      }
+      
+    return source.forEach(function (chunk:Chunk):Future<Handled<Error>> {
+      if(chunk.length == 0) return Future.sync(Resume); // TODO: review this fix
+      cursor.shift(chunk);
+      
+      return Future.async(function(cb) {
+        function next() {
+          cursor.shift();
+          var lastPos = cursor.currentPos;
+          switch p.progress(cursor) {
+            case Progressed:
+              if(lastPos != cursor.currentPos && cursor.currentPos < cursor.length) next() else cb(Resume);
+            case Done(v): 
+              consume(v).map(function (o) {
+                resume = o.resume;
+                if (resume) {
+                  if(lastPos != cursor.currentPos && cursor.currentPos < cursor.length) next() else cb(Resume);
+                } else
+                  cb(Finish);
+              });
+            case Failed(e): 
+              cb(Clog(e));
           }
         }
-        if (found) {
-          out.addBytes(bytes, start, i);
-          result = Some(out.getBytes());
-          reset();
-          return i + delim.length;
-        }
-      }
-      out.addBytes(bytes, start, length);
+        next();
+      });
+    }).flatMap(function (c) return switch c {
+      case Halted(rest):
+        Future.sync(Parsed(finish(), mk(rest)));
+      case Clogged(e, rest):
+        Future.sync(Invalid(e, mk(rest)));
+      case Failed(e):
+        Future.sync(Broke(e));
+      case Depleted if(cursor.currentPos < cursor.length): 
+        Future.sync(Parsed(finish(), mk(Chunk.EMPTY)));
+      case Depleted if(!resume):
+        Future.sync(Parsed(finish(), flush()));
+      case Depleted:
+        switch p.eof(cursor) {
+          case Success(result):
+            consume(result).map(function (_) return Parsed(finish(), flush()));
+          case Failure(e):
+            Future.sync(Invalid(e, flush()));
+        }     
+    });
+  }
+  static public function parse<R, Q>(s:Source<Q>, p:StreamParser<R>):Future<ParseResult<R, Q>> {
+    var res = null;
+    function onResult(r) {
+      res = r;
+      return Future.sync({ resume: false });
     }
-    
-    return length;
+    return doParse(s, p, onResult, function () return res);
   }
   
-  public function progress(buffer:Buffer):Outcome<Option<Bytes>, Error> {
-    if (result != None) {
-      reset();
-      result = None;
-    }
-    
-    if (buffer.size - buffer.zero <= delim.length) 
-      buffer.align();
-    
-    atEnd = !buffer.writable;
-    buffer.writeTo(this);
-    
-    return Success(result);
-  }
-  public function eof():Outcome<Bytes, Error> {
-    return Success(out.getBytes());
+  static public function parseStream<R, Q>(s:Source<Q>, p:StreamParser<R>):RealStream<R> {
+    return Generator.stream(function next(step) {
+      if(s.depleted)
+        step(End);
+      else 
+        parse(s, p).handle(function(o) switch o {
+          case Parsed(result, rest):
+            s = rest;
+            step(Link(result, Generator.stream(next)));
+          case Invalid(e, _) | Broke(e): step(Fail(e));
+      });
+    });
   }
 }
 
-class ByteWiseParser<Result> implements StreamParser<Result> {
-  
-  var result:Outcome<Option<Result>, Error>;
-  var resume:Outcome<Option<Result>, Error>;
-  
-  public function new() {
-    resume = Success(None);
+class Splitter extends BytewiseParser<Option<Chunk>> {
+  var delim:Chunk;
+  var buf = Chunk.EMPTY;
+  public function new(delim) {
+    this.delim = delim;
   }
-  
-  public function minSize():Int
-    return 1;
+  override function read(char:Int):ParseStep<Option<Chunk>> {
     
-  function read(c:Int):ParseStep<Result>
-    return throw 'not implemented';
+    if(char == -1) return Done(None);
     
-  public function eof():Outcome<Result, Error> 
-    return
-      switch read(-1) {
-        case Failed(e):
-          Failure(e);
-        case Done(r):
-          Success(r);
-        default:
-          Failure(new Error(UnprocessableEntity, 'Unexpected end of input'));
-      }    
+    buf = buf & String.fromCharCode(char);
+    return if(buf.length >= delim.length) {
+      var bcursor = buf.cursor();
+      bcursor.moveBy(buf.length - delim.length);
+      var dcursor = delim.cursor();
       
-  function writeBytes(bytes:Bytes, start:Int, length:Int) {
-    var data = bytes.getData();
-    
-    for (pos in start ... start + length) 
-      switch read(Bytes.fastGet(data, pos)) {
-        case Progressed:
-        case Failed(e):
-          result = Failure(e);
-          return pos - start + 1;
-        case Done(r):
-          result = Success(Some(r));
-          return pos - start + 1;
-      }    
+      for(i in 0...delim.length) {
+        if(bcursor.currentByte != dcursor.currentByte) {
+          return Progressed;
+        }
+        else {
+          bcursor.next();
+          dcursor.next();
+        }
+      }
+      var out = Done(Some(buf.slice(0, bcursor.currentPos - delim.length)));
+      buf = Chunk.EMPTY;
+      return out;
       
-    return length;
+    } else {
+      
+      Progressed;
+      
+    }
+  }
+}
+
+class SimpleBytewiseParser<Result> extends BytewiseParser<Result> {
+  
+  var _read:Int->ParseStep<Result>;
+
+  public function new(f)
+    this._read = f;
+
+  override public function read(char:Int)
+    return _read(char); 
+}
+
+class BytewiseParser<Result> implements StreamParserObject<Result> { 
+
+  function read(char:Int):ParseStep<Result> {
+    return throw 'abstract';
   }
   
-  public function progress(buffer:Buffer):Outcome<Option<Result>, Error> {
-    result = resume;
-    buffer.writeTo(this);
-    return result;
+  public function progress(cursor:ChunkCursor) {
+    
+    do switch read(cursor.currentByte) {
+      case Progressed:
+      case Done(r): 
+        cursor.next();
+        return Done(r);
+      case Failed(e):
+        return Failed(e);
+    } while (cursor.next());
+    
+    return Progressed;
   }
+  
+  public function eof(rest:ChunkCursor) 
+    return switch read( -1) {
+      case Progressed: Failure(new Error(UnprocessableEntity, 'Unexpected end of input'));
+      case Done(r): Success(r);
+      case Failed(e): Failure(e);
+    }
+  
+  
+}
+
+interface StreamParserObject<Result> {
+  function progress(cursor:ChunkCursor):ParseStep<Result>;
+  function eof(rest:ChunkCursor):Outcome<Result, Error>;
 }

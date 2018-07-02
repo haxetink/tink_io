@@ -1,473 +1,209 @@
 package tink.io;
 
-import haxe.io.*;
-import tink.io.Buffer;
-import tink.io.IdealSink;
-import tink.io.IdealSource;
-import tink.io.Pipe;
+import haxe.io.Bytes;
 import tink.io.Sink;
 import tink.io.StreamParser;
-import tink.io.Worker;
-import tink.streams.*;
-import haxe.ds.Option;
+import tink.streams.IdealStream;
+import tink.streams.RealStream;
+import tink.streams.Stream;
 
+using tink.io.Source;
 using tink.CoreApi;
 
-abstract Source(SourceObject) from SourceObject to SourceObject {
+@:forward(reduce)
+abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
-  public inline function read(into:Buffer, max:Int = 1 << 30):Surprise<Progress, Error>
-    return this.read(into, max);
-    
-  public inline function close():Surprise<Noise, Error>
-    return this.close();
-    
-  public inline function all():Surprise<Bytes, Error> 
-    return this.all();
+  public static var EMPTY(default, null):IdealSource = Empty.make();
   
-  public inline function prepend(other:Source):Source
-    return this.prepend(other);
+  @:to inline function dirty():Source<Error>
+    return cast this;
   
-  public inline function append(other:Source):Source
-    return this.append(other);
-  
-  public inline function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options: { ?end: Bool } ):Future<PipeResult<Error, Out>>
-    return this.pipeTo(dest, options);
-    
-  public inline function idealize(onError:Callback<Error>):IdealSource
-    return this.idealize(onError);
-    
-  public inline function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>
-    return this.parse(parser);
-    
-  public inline function parseWhile<T>(parser:StreamParser<T>, consumer:T->Future<Bool>):Surprise<Source, Error>
-    return this.parseWhile(parser, consumer);
-    
-  public inline function parseStream<T>(parser:StreamParser<NullOr<T>>, ?rest:Callback<Source>):Stream<T>
-    return this.parseStream(parser, rest);
-     
-  public inline function split(delim:Bytes):Pair<Source, Source>
-    return this.split(delim);
-  
+  public var depleted(get, never):Bool;
+    inline function get_depleted() return this.depleted;
+
   #if (nodejs && !macro)
-  static public function ofNodeStream(name, r:js.node.stream.Readable.IReadable)
-    return new tink.io.nodejs.NodejsSource(r, name);
+  @:noUsing static public inline function ofNodeStream(name:String, r:js.node.stream.Readable.IReadable, ?options:{ ?chunkSize: Int, ?onEnd:Void->Void }):RealSource {
+    if (options == null) 
+      options = {};
+    return tink.io.nodejs.NodejsSource.wrap(name, r, options.chunkSize, options.onEnd);
+  }
+  
+  public function toNodeStream():js.node.stream.Readable.IReadable {
+    var native = @:privateAccess new js.node.stream.PassThrough(); // https://github.com/HaxeFoundation/hxnodejs/pull/91
+    
+    var source = chunked();
+    function write() {
+      source.forEach(function(chunk:Chunk) {
+        var ok = native.write(js.node.Buffer.hxFromBytes(chunk.toBytes()));
+        return ok ? Resume : Finish;
+      }).handle(function(o) switch o {
+        case Depleted:
+          native.end();
+        case Halted(rest):
+          source = rest;
+          native.once('drain', write);
+        case Failed(e):
+          native.emit('error', new js.Error(e.message));
+      });
+    }
+    
+    write();
+    
+    return native;
+  }
   #end
   
-  public function skip(length:Int):Source {
-    return limit(length).pipeTo(BlackHole.INST).map(function(o) return switch o {
-      case AllWritten: Success(this);
-      case SourceFailed(e): Failure(e);
-      default: Failure(new Error('assert')); // technically unreachable, the sink is ideal
-    });
+  @:noUsing static public inline function ofCsStream(name:String, r:cs.system.io.Stream, ?options:{ ?chunkSize: Int }):RealSource {
+    var chunkSize = options == null || options.chunkSize == null ? 1 << 16 : options.chunkSize;
+    return tink.io.cs.CsSource.wrap(name, r, chunkSize);
+  }
+
+  @:noUsing static public inline function ofInput(name:String, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
+    if (options == null)
+      options = {};
+    return new tink.io.std.InputSource(name, input, options.worker.ensure(), haxe.io.Bytes.alloc(switch options.chunkSize {
+      case null: 0x10000;
+      case v: v;
+    }), 0);
   }
   
-  public function limit(length:Int):Source 
-    return new LimitedSource(this, length);
+  public function chunked():Stream<Chunk, E>
+    return this;
   
-  static public function async(f, close) 
-    return new AsyncSource(f, close);
-  
-  @:from static public function failure(e:Error):Source
-    return new FailedSource(e);
-  
-  static public function ofInput(name:String, input:Input, ?worker:Worker):Source
-    return new StdSource(name, input, worker);
-    
-  static public var stdin(default, null):Source =
-    #if (nodejs && !macro)
-      ofNodeStream('stdin', js.Node.process.stdin)
-    #elseif sys
-      ofInput('stdin', Sys.stdin())
-    #else
-      Empty.instance
-    #end
-  ;
-    
-  @:from static public function flatten(s:Surprise<Source, Error>):Source
-    return new FutureSource(s);    
-    
-  @:from static public function fromBytes(b:Bytes):Source
-    return tink.io.IdealSource.ofBytes(b);
-    
-  @:from static public function fromString(s:String):Source
-    return fromBytes(Bytes.ofString(s));
-}
+  @:from static public function ofError(e:Error):RealSource
+    return (e : Stream<Chunk, Error>);
 
-private class SimpleSource extends SourceBase {
-  
-  var closer:Void->Surprise<Noise, Error>;
-  var reader:Buffer->Int->Surprise<Progress, Error>;
-  
-  public function new(reader, ?closer) {
-    this.reader = reader;
-    this.closer = closer;
-  }
-  
-  override public function close():Surprise<Noise, Error> 
-    return 
-      if (this.closer == null) super.close();
-      else closer();
-  
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-    return reader(into, max);
+  @:from static function ofFuture(f:Future<IdealSource>):IdealSource
+    return Stream.flatten((cast f:Future<Stream<Chunk, Noise>>)); // TODO: I don't understand why this needs a cast
     
-}
-
-typedef NullOr<T> = T;//This is practically equivalent with Null<T>, except that it gets no special treatement by the compiler and just gets resolved to T. Otherwise it would fail for hxjava
-
-interface SourceObject {
-    
-  function read(into:Buffer, max:Int = 1 << 30):Surprise<Progress, Error>;
-  function close():Surprise<Noise, Error>;
-  
-  function all():Surprise<Bytes, Error>;
-  
-  function prepend(other:Source):Source;
-  function append(other:Source):Source;
-  function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>>;
-  
-  function idealize(onError:Callback<Error>):IdealSource;
-  
-  function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error>;
-  function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>;
-  function parseStream<T>(parser:StreamParser<NullOr<T>>, ?rest:Callback<Source>):Stream<T>;
-  function split(delim:Bytes):Pair<Source, Source>;
-  
-}
-
-private class AsyncSource extends SourceBase {
-  var data:SyntheticIdealSource;
-  var end:Surprise<Noise, Error>;
-  var onError:Surprise<Progress, Error>;
-  var _close:Void->Void;
-  
-  public function new(f:SignalTrigger<Bytes>->FutureTrigger<Outcome<Noise, Error>>->Void, close) {
-    this.data = IdealSource.create();
-    _close = close;
-    var onData = Signal.trigger(),
-        onEnd = Future.trigger();
-        
-    onData.asSignal().handle(data.write);
-    end = onEnd.asFuture();
-    end.handle(function (e) {
-      data.close();
-    });
-    onError = Future.async(function (cb) end.handle(function (o) switch o {
-      case Failure(e): cb(Failure(e));
-      default:
+  @:from static function ofPromised(p:Promise<RealSource>):RealSource
+    return Stream.flatten(p.map(function (o) return switch o {
+      case Success(s): s;
+      case Failure(e): ofError(e);
     }));
-    f(onData, onEnd);
-  }
-    
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-    return 
-      data.read(into, max) || onError;
   
-  override public function close():Surprise<Noise, Error> {
-    _close();  
-    return data.close();
-  }
+  static public function concatAll<E>(s:Stream<Chunk, E>)
+    return s.reduce(Chunk.EMPTY, function (res:Chunk, cur:Chunk) return Progress(res & cur));
 
-}
-
-class SourceBase implements SourceObject {
+  public function pipeTo<EOut, Result>(target:SinkYielding<EOut, Result>, ?options):Future<PipeResult<E, EOut, Result>> 
+    return target.consume(this, options);
   
-  public function idealize(onError:Callback<Error>):IdealSource
-    return new IdealizedSource(this, onError);
-  
-  public function prepend(other:Source):Source
-    return CompoundSource.of(other, this);
+  public inline function append(that:Source<E>):Source<E> 
+    return this.append(that);
     
-  public function append(other:Source):Source
-    return CompoundSource.of(this, other);
+  public inline function prepend(that:Source<E>):Source<E> 
+    return this.prepend(that);
     
-  public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-    return throw 'not implemented';
-  
-  public function close():Surprise<Noise, Error>
-    return Future.sync(Success(Noise));
-  
-  public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>>
-    return Future.async(function (cb) Pipe.make(this, dest, options, function (_, res) cb(res)));
+  public inline function transform<A>(transformer:Transformer<E, A>):Source<A>
+    return transformer.transform(this);
     
-  public function all() {
-    var out = new BytesOutput();
-    return Future.async(function (cb) {
-      pipeTo(Sink.ofOutput('memory buffer', out)).handle(function (r) cb(switch r {
-        case SourceFailed(e): Failure(e);
-        case AllWritten: Success(out.getBytes());
-        default: throw 'assert';
-      }));
+  public function skip(len:Int):Source<E> {
+    return this.regroup(function(chunks:Array<Chunk>) {
+      var chunk = chunks[0];
+      if(len <= 0) return Converted(Stream.single(chunk));
+      var length = chunk.length;
+      var out = Converted(if(len < length) Stream.single(chunk.slice(len, length)) else Empty.make());
+      len -= length;
+      return out;
     });
   }
-  
     
-  public function parse<T>(parser:StreamParser<T>):Surprise<{ data:T, rest: Source }, Error> {
-    var ret = null;
-    return 
-      parseWhile(parser, function (x) { ret = x; return Future.sync(false); } ) 
-      >> function (s:Source) return { data: ret, rest: s };
-  }      
-  
-  public function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error>
-    return new ParserSink(parser, cond).parse(this);
-    
-  public function parseStream<T>(parser:StreamParser<T>, ?rest:Callback<Source>):Stream<T>
-    return new ParserStream(this, parser, rest);
-    
-  public function split(delim:Bytes):Pair<Source, Source> {
-    //TODO: implement this in a streaming manner
-    var f = parse(new Splitter(delim));
-    return new Pair<Source, Source>(
-      new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return (d.data : Source)),
-      new FutureSource(f >> function (d:{ data: Bytes, rest: Source }) return d.rest)
-    );
-  }
-}
-
-private class ParserStream<T> extends tink.streams.Stream.StreamBase<T> {
-  var source:Source;
-  var parser:StreamParser<Null<T>>;
-  var handleRest:Callback<Source>;
-  
-  public function new(source, parser, ?handleRest) {
-    this.source = source;
-    this.parser = parser;
-    this.handleRest = handleRest;
-  }
-  
-  override public function forEachAsync(item:T->Future<Bool>):Surprise<Bool, Error>
-    return Future.async(function (finished) {
-      var done = false;
-      source.parseWhile(parser, function (v) 
-        return if (v == null) {
-          done = true;
-          Future.sync(false);
-        }
-        else item(v)
-      ).handle(function (o) finished(switch o {
-        case Success(rest):
-          if (done && handleRest != null)
-            handleRest.invoke(rest);
-          Success(done);
-        case Failure(e): Failure(e);
-      }));
-    });
-}
-
-private class LimitedSource extends SourceBase {
-  
-  var limit:Int;
-  var bytesRead = 0;
-  var target:Source;
-  var surplus = 0;
-  
-  public function new(target, limit) {
-    this.target = target;
-    this.limit = limit;
-  }
-  
-  override public function read(into:Buffer, maxb:Int = 1 << 30):Surprise<Progress, Error> 
-    return 
-      if (bytesRead >= limit) 
-        Future.sync(Success(Progress.EOF));
-      else
-        Future.async(function (cb) {
-          if (maxb > limit - bytesRead)
-            maxb = limit - bytesRead;
-          target.read(into, maxb).handle(function (x) {
-            switch x {
-              case Success(p): bytesRead += p.bytes;
-              default:
-            }
-            cb(x);
-          });
-        });
-  
-}
-
-private class FutureSource extends SourceBase {
-  
-  var s:Surprise<Source, Error>;
-  
-  public function new(s)
-    this.s = s;
-    
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-    return s >> function (s:Source) return s.read(into, max);
-    
-  override public function close():Surprise<Noise, Error>
-    return s >> function (s:Source) return s.close();
-  
-  public function toString() {
-    var ret = 'PENDING';
-    s.handle(function (o) ret = Std.string(o));
-    return '[FutureSource $ret]';
-  }
-    
-}
-
-private class FailedSource extends SourceBase {
-  var error:Error;
-  
-  public function new(error)
-    this.error = error;
-    
-  override public function read(into:Buffer, max = 1 << 30)
-    return Future.sync(Failure(error));      
-    
-  override public function close() {
-    return Future.sync(Failure(error));
-  }
-}
-
-private class StdSource extends SourceBase {
-  
-  var name:String;
-  var target:Input;
-  var worker:Worker;
-  
-  public function new(name, target, ?worker:Worker) {
-    this.name = name;
-    this.target = target;
-    this.worker = worker.ensure();
-  }
-    
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-    return worker.work(function () return into.tryReadingFrom(name, target, max));
-  
-  override public function close() {
-    return 
-      worker.work(function () 
-        return Error.catchExceptions(
-          function () {
-            target.close();
-            return Noise;
-          },
-          Error.reporter('Failed to close $name')
-        )
-      );
-  }
-  override public function parseWhile<T>(parser:StreamParser<T>, cond:T->Future<Bool>):Surprise<Source, Error> {
-    var buf = Buffer.alloc(Buffer.sufficientWidthFor(parser.minSize()));
-    var ret = Future.async(function (cb) {
-      function step(?noread)
-        worker.work(function () return
-          switch if (noread) Success(Progress.NONE) else buf.tryReadingFrom(name, target) {
-            case Success(v):
-              if (v.isEof)
-                buf.seal();
-              
-              var available = buf.available;
-              
-              if (v.isEof && available == 0)
-                parser.eof().map(Some);
-              else
-                switch parser.progress(buf) {
-                  case Success(None) if (v.isEof && available == buf.available):
-                    Failure(new Error('Parser hung on input'));
-                  case v: v;
-                }
-            case Failure(e):
-              Failure(e);
-          }
-        ).handle(function (o) switch o {
-          case Failure(e): cb(Failure(e));
-          case Success(Some(v)):
-            cond(v).handle(function (v) 
-              if (v) step(true);
-              else cb(Success(this.prepend(buf.content())))
-            );
-          case Success(None): step();
-        });
-        
-      step();
-    });
-    ret.handle(@:privateAccess buf.dispose);
-    
-    return ret;
-  }  
-  
-  public function toString()
-    return name;
-
-}
-
-private class CompoundSource extends SourceBase {
-  var parts:Array<Source>;
-  public function new(parts)
-    this.parts = parts;
-  
-  override public function pipeTo<Out>(dest:PipePart<Out, Sink>, ?options:{ ?end: Bool }):Future<PipeResult<Error, Out>> 
-    return Future.async(function (cb) {
-      function next()
-        switch parts {
-          case []: cb(AllWritten);
-          case v: 
-            parts[0].pipeTo(dest, if (parts.length == 1) options else null).handle(function (x) switch x {
-              case AllWritten:
-                parts.shift().close();
-                next();
-              default:
-                cb(x);
-            });
-        };
-        
-      next();
-    });
-  
-  override public function close():Surprise<Noise, Error> {
-    if (parts.length == 0) return Future.sync(Success(Noise));
-    var ret = Future.ofMany([
-      for (p in parts) 
-        p.close()
-    ]);
-    parts = [];
-    return ret.map(function (outcomes) {
-      var failures = [];
-      for (o in outcomes)
-        switch o {
-          case Failure(f):
-            failures.push(f);
-          default:
-        }
-      
-      return switch failures {
-        case []: 
-          Success(Noise);
-        default: 
-          Failure(Error.withData('Error closing sources', failures));
-      }
+  public function limit(len:Int):Source<E> {
+    if(len == 0) return cast Source.EMPTY;
+    return this.regroup(function(chunks:Array<Chunk>) {
+      if(len <= 0) return Terminated(None);
+      var chunk = chunks[0];
+      var length = chunk.length;
+      var out = 
+        if(len == length)
+          Terminated(Some(Stream.single(chunk)));
+        else
+          Converted(Stream.single(if(len < length) chunk.slice(0, len) else chunk));
+      len -= length;
+      return out;
     });
   }
-  
-  override public function read(into:Buffer, max = 1 << 30):Surprise<Progress, Error>
-    return switch parts {
-      case []: 
-        Future.sync(Success(Progress.EOF));
-      default:
-        parts[0].read(into).flatMap(
-          function (o) return switch o {
-            case Success(_.isEof => true):
-              parts.shift().close();
-              read(into, max);//Technically a huge array of empty synchronous sources could cause a stack overflow, but let's be optimistic for once!
-            default:
-              Future.sync(o);
-          }
-        );  
+    
+  @:from static inline function ofChunk<E>(chunk:Chunk):Source<E>
+    return new Single(chunk);
+    
+  @:from static inline function ofString<E>(s:String):Source<E>
+    return ofChunk(s);
+    
+  @:from static inline function ofBytes<E>(b:Bytes):Source<E>
+    return ofChunk(b);
+    
+}
+
+typedef SourceObject<E> = StreamObject<Chunk, E>;//TODO: make this an actual subtype to add functionality on
+
+typedef RealSource = Source<Error>;
+
+class RealSourceTools {
+  static public function all(s:RealSource):Promise<Chunk>
+    return Source.concatAll(s).map(function (o) return switch o {
+      case Reduced(c): Success(c);
+      case Failed(e): Failure(e);
+    });
+
+  static public function parse<R>(s:RealSource, p:StreamParser<R>):Promise<Pair<R, RealSource>>
+    return StreamParser.parse(s, p).map(function (r) return switch r {
+      case Parsed(data, rest): Success(new Pair(data, rest));
+      case Invalid(e, _) | Broke(e): Failure(e);
+    });
+    
+  static public function split(src:RealSource, delim:Chunk):SplitResult<Error> {
+    var s = parse(src, new Splitter(delim));
+    // TODO: make all these lazy
+    return {
+      before: Stream.promise(s.next(function(p):RealSource return switch p.a {
+        case Some(chunk): chunk;
+        case None: src;
+      })),
+      delimiter: s.next(function(p) return switch p.a {
+        case Some(_): delim;
+        case None: new Error(NotFound, 'Delimiter not found');
+      }),
+      after: Stream.promise(s.next(function(p):RealSource return p.b)),
     }
+  }
   
-  static public function of(a:Source, b:Source) //TODO: consider dealing with null
-    return new CompoundSource(
-      switch [Std.instance(a, CompoundSource), Std.instance(b, CompoundSource)] {
-        case [null, null]: 
-          [a, b];
-        case [null, { parts: p }]: 
-          [a].concat(p);  
-        case [{ parts: p }, null]: 
-          p.concat([b]);
-        case [{ parts: p1 }, { parts: p2 }]:
-          p1.concat(p2);
-      }
-    );
+  static public function parseStream<R>(s:RealSource, p:StreamParser<R>):RealStream<R>
+    return StreamParser.parseStream(s, p);
+    
+  static public function idealize(s:RealSource, rescue:Error->RealSource):IdealSource
+    return (s.chunked().idealize(rescue):StreamObject<Chunk, Noise>);
+}
+
+typedef IdealSource = Source<Noise>;
+typedef SplitResult<E> = {
+  before:Source<E>,
+  delimiter:Promise<Chunk>,
+  after:Source<E>,
+}
+
+class IdealSourceTools {
+  static public function all(s:IdealSource):Future<Chunk>
+    return Source.concatAll(s).map(function (o) return switch o {
+      case Reduced(c): c;
+    });
+    
+  static public function parse<R>(s:IdealSource, p:StreamParser<R>):Promise<Pair<R, IdealSource>>
+    return StreamParser.parse(s, p).map(function (r) return switch r {
+      case Parsed(data, rest): Success(new Pair(data, rest));
+      case Invalid(e, _): Failure(e);
+    });
+    
+  static public function parseStream<R>(s:IdealSource, p:StreamParser<R>):RealStream<R>
+    return StreamParser.parseStream(s, p);
+    
+  static public function split(s:IdealSource, delim:Chunk):SplitResult<Noise> {
+    var s = RealSourceTools.split((cast s:RealSource), delim);
+    // TODO: make all these lazy
+    return {
+      before: s.before.idealize(function(e) return Source.EMPTY),
+      delimiter: s.delimiter,
+      after: s.after.idealize(function(e) return Source.EMPTY),
+    }
+  }
 }
