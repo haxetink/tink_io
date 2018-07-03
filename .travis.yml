@@ -13,6 +13,9 @@ install:
 script:
   - yarn travix node
   - yarn travix neko
-  #- yarn travix java
-  #- yarn travix interp
+  # - yarn travix java
+  # - yarn travix interp
+  # - yarn travix lua
+  # - yarn travix cpp
   - yarn travix php
+  - yarn travix cs -D erase-generics
