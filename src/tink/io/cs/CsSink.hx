@@ -1,34 +1,40 @@
 package tink.io.cs;
 
-import haxe.io.Bytes;
-import tink.io.Buffer;
+import cs.system.io.Stream as CsStream;
+import cs.system.AsyncCallback;
+import tink.Chunk;
 import tink.io.Sink;
+import tink.streams.Stream;
 
+using tink.io.PipeResult;
 using tink.CoreApi;
 
-class CsSink extends SinkBase {
-  
-  var target:cs.system.io.Stream;
-  var name:String;
-  var worker:Worker;
-  
-  public function new(target, name, ?worker:Worker) {
-    this.target = target;
-    this.name = name;
-    this.worker = worker.ensure();
-  }
-  
-  function writeBytes(from:Bytes, start:Int, length:Int) {
-    return target.Write(into.getData(), start, length);
-  }
-  
-  override public function write(from:Buffer, max = 1 << 30):Surprise<Progress, Error> {
-    return worker.work(function () return into.tryWritingTo(name, this, max));
-  }
-  
-  override public function close():Surprise<Noise, Error> {
-    target.Close();
-    return Future.sync(Success(Noise));
-  }
-  
+class CsSink extends SinkBase<Error, Noise> {
+	
+	var name:String;
+	var stream:CsStream;
+	
+	function new(name, stream) {
+		this.name = name;
+		this.stream = stream;
+	}
+	
+	override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Noise>> {
+		var ret = source.forEach(function (c:Chunk) {
+			return Future.async(function(cb) {
+				stream.BeginWrite(c.toBytes().getData(), 0, c.length, new AsyncCallback(function(ar) {
+					stream.EndWrite(ar);
+					cb((Resume:Handled<Error>));
+				}), null);
+			});
+		});
+			
+		if (options.end)
+			ret.handle(function (end) stream.Close());
+			
+		return ret.map(function (c) return c.toResult(Noise));
+	}
+	
+	static inline public function wrap(name, stream)
+		return new CsSink(name, stream);
 }

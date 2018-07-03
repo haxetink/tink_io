@@ -1,108 +1,113 @@
 package;
 
-import haxe.unit.TestCase;
-import tink.io.*;
-import haxe.io.*;
-import tink.io.Sink;
+import tink.io.std.InputSource;
 import tink.io.Source;
-import tink.io.IdealSource;
-import tink.io.Pipe;
+import tink.io.Sink;
+import tink.io.PipeResult;
 
 using tink.CoreApi;
+using sys.io.File;
+using sys.FileSystem;
 
-class PipeTest extends TestCase {
-  function unmanaged(size)
-    return @:privateAccess Buffer.unmanaged(Bytes.alloc(size));
+@:asserts
+class PipeTest {
+  
+  public function new() {}
+  
+  public function copyFile() {
+    var fsrc = 'example.blob';
+    var fdst = 'copy.blob';
 
-  function testSimple() {      
-    for (len in [0, 1, 5, 17, 257, 65537]) {
-      var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-      var buf = new StringBuf();
-      for (i in 0...len)
-        buf.addChar(chars.charCodeAt(Std.random(chars.length)));
-      var s = buf.toString();
-      var w = new TestWorker();
-      var out = new FakeSink(w);
-      
-      function noError(e) {
-        assertEquals(null, e);
-      }
-      
-      Pipe.make((s:IdealSource), out.idealize(noError), 0,
-        function (_, o) switch o {
-          case AllWritten:
-            assertEquals(s, out.getData().toString());
-          default:
-            throw 'assert';
-        }
-      );
-      
-      w.runAll();
-      
+    if(!fsrc.exists()) {
+      var s = 'some random content';
+      for (i in 0...20)
+        s += s;
+
+      s+='123456789';
+      fsrc.saveContent(s);
     }
-  }
-}
-
-
-class FakeSink extends SinkBase {
-  var out:BytesBuffer;
-  var w:Worker;
-  public function new(w) {
-    this.out = new BytesBuffer();
-    this.w = w;
-  }
-  override public function write(from:Buffer):Surprise<Progress, Error> {
-    return w.work(function () return from.tryWritingTo('fake sink', this));
-  }
-  public function writeBytes(bytes:Bytes, pos:Int, len:Int):Int {
-    len = randomize(len);
-    this.out.addBytes(bytes, pos, len);
     
-    return len;
+    var src = readFile(fsrc, 5249710),
+        dst = writeFile(fdst);
+
+    var start = haxe.Timer.stamp();
+    src.pipeTo(dst, {end: true}).handle(function(o) {
+        trace(haxe.Timer.stamp() - start);
+        asserts.assert(o == AllWritten);
+        asserts.assert(fsrc.getContent().length == fdst.getContent().length);
+        asserts.done();
+    });
+    
+    return asserts;
+  }
+
+  function readFile(name:String, ?chunkSize) {
+    return
+      #if nodejs
+        Source.ofNodeStream(
+          'Input from file $name', 
+          js.node.Fs.createReadStream(name), 
+          { chunkSize: chunkSize }
+        );
+      #elseif cs
+        Source.ofCsStream(
+          'Input from file $name', 
+          new cs.system.io.FileStream(
+            name,
+            cs.system.io.FileMode.Open,
+            cs.system.io.FileAccess.Read,
+            cs.system.io.FileShare.ReadWrite
+          ),
+          { chunkSize: chunkSize }
+        );
+      #elseif sys
+        Source.ofInput(
+          'Input from file $name', 
+          sys.io.File.read(name, true), 
+          { chunkSize: chunkSize }
+        );
+      #else
+        #error "not implemented"
+      #end 
+  }
+
+  function writeFile(name:String) {
+    return
+      #if nodejs
+        Sink.ofNodeStream('Output to file $name', js.node.Fs.createWriteStream(name));
+      #elseif cs
+        Sink.ofCsStream('Output to file $name', new cs.system.io.FileStream(
+          name,
+          cs.system.io.FileMode.OpenOrCreate,
+          cs.system.io.FileAccess.Write,
+          cs.system.io.FileShare.ReadWrite
+      ));
+      #elseif sys
+        Sink.ofOutput('Output to file $name', sys.io.File.write(name, true));
+      #else
+        #error "not implemented"
+      #end
   }
   
-  public function getData()
-    return this.out.getBytes();
- 
-  static public function randomize(len:Int) {
-    if (len > 8) {
-      len >>= 1;
-      len += Std.random(len);
+  public function empty() {
+    var dst = 'empty.blob';
+    var sink = writeFile(dst);
+    function _pipe(src:IdealSource) {
+      return src.pipeTo(sink).map(function(x) {
+        asserts.assert(x == AllWritten);
+        return Noise;
+      });
     }
-    return len;
+    
+    Future.ofMany([
+      _pipe(''),
+      _pipe(Source.EMPTY),
+    ]).handle(function(_) {
+      asserts.assert(dst.getContent().length == 0);
+      asserts.done();
+    });
+    
+    return asserts;
   }
+  
 }
-
-//class FakeSource extends SourceBase {
-  //var data:Bytes;
-  //var pos = 0;
-  //var error:Dynamic;
-    //
-  //public function new(data, ?error) {
-    //this.data = data;
-    //this.error = error;
-  //}  
-  //
-  //override public function read(into:Buffer):Surprise<Progress, Error> 
-    //return Future.sync(into.tryReadingFrom('fake source', this));
-  //
-  //public function readBytes(bytes:Bytes, offset:Int, len:Int):Int {
-    //len = FakeSink.randomize(len);
-    //if (pos == data.length) 
-      //if (error != null) 
-        //throw error;
-      //else
-        //return -1;
-    //
-    //if (len > data.length - pos) 
-      //len = data.length - pos;
-    //
-    //bytes.blit(offset, data, pos, len);
-    //pos += len;
-    //return len;  
-  //}
-  //
-  //override public function close()
-    //return Future.sync(Success(Noise));
-  //
-//}
