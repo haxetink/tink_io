@@ -8,11 +8,11 @@ os:
   - linux
       
 install:
-  - npm install
+  - yarn
 
 script:
-  - npm run travix node
-  - npm run travix neko
-  #- npm run travix java
-  #- npm run travix interp
-  - npm run travix php
+  - yarn travix node
+  - yarn travix neko
+  #- yarn travix java
+  #- yarn travix interp
+  - yarn travix php
