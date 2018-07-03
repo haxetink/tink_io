@@ -16,3 +16,4 @@ script:
   #- yarn travix java
   #- yarn travix interp
   - yarn travix php
+  - yarn travix cpp
