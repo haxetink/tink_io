@@ -79,8 +79,8 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return Stream.flatten((cast f:Future<Stream<Chunk, Noise>>)); // TODO: I don't understand why this needs a cast
     
   @:from static function ofPromised(p:Promise<RealSource>):RealSource
-    return Stream.flatten(p.map(function (o) return switch o {
-      case Success(s): s;
+    return Stream #if cs .dirtyFlatten #else .flatten #end (p.map(function (o) return switch o {
+      case Success(s): (s:SourceObject<Error>);
       case Failure(e): ofError(e);
     }));
   
@@ -158,15 +158,15 @@ class RealSourceTools {
     var s = parse(src, new Splitter(delim));
     // TODO: make all these lazy
     return {
-      before: Stream.promise(s.next(function(p):RealSource return switch p.a {
-        case Some(chunk): chunk;
+      before: Stream #if cs .dirtyPromise #else .promise #end(s.next(function(p):SourceObject<Error> return switch p.a {
+        case Some(chunk): (chunk:RealSource);
         case None: src;
       })),
       delimiter: s.next(function(p) return switch p.a {
         case Some(_): delim;
         case None: new Error(NotFound, 'Delimiter not found');
       }),
-      after: Stream.promise(s.next(function(p):RealSource return p.b)),
+      after: Stream #if cs .dirtyPromise #else .promise #end(s.next(function(p):SourceObject<Error> return p.b)),
     }
   }
   
