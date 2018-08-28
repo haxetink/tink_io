@@ -12,6 +12,19 @@ enum PipeResult<In, Out, Result> {
 }
 
 class PipeResultTools {
+  
+  /**
+   * Transform PipeResult to an Outcome of Bool, indicating the source is completely written or not
+   */
+  static public function toOutcome<EIn, FailingWith, Result>(result:PipeResult<EIn, FailingWith, Result>):Outcome<Bool, Error> {
+    return switch result {
+      case AllWritten: Success(true);
+      case SinkEnded(_): Success(false);
+      case SinkFailed(e, _) | SourceFailed(e): Failure(e);
+    }
+  }
+  
+  
   static public function toResult<EIn, FailingWith, Result>(c:Conclusion<Chunk, FailingWith, EIn>, result:Result, ?buffered:Chunk):PipeResult<EIn, FailingWith, Result> {
 
     function mk(s:Source<EIn>)
