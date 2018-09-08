@@ -1,19 +1,31 @@
 sudo: required
 dist: trusty
 
-language: node_js
-node_js: 6
-
-os:
-  - linux
-      
-install:
-  - yarn
-
-script:
-  - yarn travix node
-  - yarn travix neko
-  #- yarn travix java
-  #- yarn travix interp
-  - yarn travix php
-  - yarn travix cpp
+jobs:
+  include:
+    - stage: test
+      language: node_js
+      node_js: 8
+      os:
+        - linux
+        # - osx
+      install:
+        - npm i -g lix haxe-travix
+        - lix download
+      script:
+        - travix node
+        - travix neko
+        #- travix java
+        #- travix interp
+        - travix php
+        - travix cpp
+    
+    - stage: deploy
+      language: haxe
+      haxe: "3.4.7"
+      os: linux
+      script: skip
+      after_success:
+        - haxelib install travix
+        - haxelib run travix install
+        - haxelib run travix release
