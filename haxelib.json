@@ -6,10 +6,10 @@
   "contributors": [
     "back2dos"
   ],
-  "releasenote": "initial release",
-  "version": "0.0.0",
+  "releasenote": "Merged pure branch",
+  "version": "0.6.0",
   "dependencies": {
     "tink_chunk": "",
-    "tink_streams" : "gh:haxetink/tink_streams"
+    "tink_streams" : ""
   }
 }
