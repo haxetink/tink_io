@@ -1,33 +1,46 @@
 sudo: required
 dist: trusty
 
+stages:
+  - test
+  - deploy
+
+language: node_js
+node_js: 8
+
+os:
+  - linux
+  # - osx
+
+env:
+  - HAXE_VERSION=3.4.7
+  - HAXE_VERSION=latest
+  
+install:
+  - npm i -g lix
+  - lix install haxe $HAXE_VERSION
+  - lix download
+  
+script:
+  - lix run travix node
+  - lix run travix neko
+  #- lix run travix java
+  #- lix run travix interp
+  - lix run travix php
+  - lix run travix cpp
+
 jobs:
   include:
-    - stage: test
-      language: node_js
-      node_js: 8
-      os:
-        - linux
-        # - osx
-      install:
-        - npm i -g lix
-        - lix download
-      script:
-        - lix run travix node
-        - lix run travix neko
-        #- lix run travix java
-        #- lix run travix interp
-        - lix run travix php
-        - lix run travix cpp
-    
+    # - stage: test # should uncomment this when there is no matrix above (e.g. only one os, one env, etc)
     - stage: deploy
       language: haxe
       haxe: "3.4.7"
       os: linux
+      install: skip
       script: skip
+      env:
+        - secure: "xhfULa7RSA+9d5Fm2FIEX/USNBA/fc1jncTzY6DvSECUyFqSU2JkAC7zH5MbuaRrSD/mQsV2+4qIaMfwhMcwib7hlQN+nc+ysPzdIeCDrqLuYl+Imv+pmT7bwjll280U9EBiS4MuDG3/oL8w52QVa55DEoT6+OD8/4gYAh96cuTWPTW7IBxmlX0viENooUZMu8QQqr0q7arguw8fSvcszJ9fTOSUWdQT+WGodYNT/C8CarRPLTUYMC/3n5KIwzvgced0zS6AvkSi0Hy2/4qXHmtDX3wYB3paZB/K5we20XRrtGvtuJjMqwa2Mc59xjnnONWNEzGT48oz5vgWpwjpfsZiM6WNTEViqbxHj7H0qxP3mgu+XFIePcGz1fSmuYLMIBY5NW0OAYDZ1sIF/L3UmP5fH4TXuIp7/E1o+lDQACmQrcu6ofvfeJqPAQI5Ihw8bfqs5NWd7csxZ6LzL+quUmb6AYnvshMybLLHWsDWMP/MBubaILkMqRyDbT4MPdQKpoxnfKDYDZbjHOBs6prEGhsFBs4kJJnJcdXx40foYAaDg2rprc7XYJlbeXFhYMCrLzlTRFE6qF/7cWbyZH9E+YzvS+6g5/U94VNt1+xJFEuhi7Z3xv6yV9P735w2ngTV39fKR+slEq7upFT+MDkTRTFpMVcsNLihcWIVOvTgAm4="
       after_success:
         - haxelib install travix
         - haxelib run travix install
         - haxelib run travix release
-env:
-  - secure: "xhfULa7RSA+9d5Fm2FIEX/USNBA/fc1jncTzY6DvSECUyFqSU2JkAC7zH5MbuaRrSD/mQsV2+4qIaMfwhMcwib7hlQN+nc+ysPzdIeCDrqLuYl+Imv+pmT7bwjll280U9EBiS4MuDG3/oL8w52QVa55DEoT6+OD8/4gYAh96cuTWPTW7IBxmlX0viENooUZMu8QQqr0q7arguw8fSvcszJ9fTOSUWdQT+WGodYNT/C8CarRPLTUYMC/3n5KIwzvgced0zS6AvkSi0Hy2/4qXHmtDX3wYB3paZB/K5we20XRrtGvtuJjMqwa2Mc59xjnnONWNEzGT48oz5vgWpwjpfsZiM6WNTEViqbxHj7H0qxP3mgu+XFIePcGz1fSmuYLMIBY5NW0OAYDZ1sIF/L3UmP5fH4TXuIp7/E1o+lDQACmQrcu6ofvfeJqPAQI5Ihw8bfqs5NWd7csxZ6LzL+quUmb6AYnvshMybLLHWsDWMP/MBubaILkMqRyDbT4MPdQKpoxnfKDYDZbjHOBs6prEGhsFBs4kJJnJcdXx40foYAaDg2rprc7XYJlbeXFhYMCrLzlTRFE6qF/7cWbyZH9E+YzvS+6g5/U94VNt1+xJFEuhi7Z3xv6yV9P735w2ngTV39fKR+slEq7upFT+MDkTRTFpMVcsNLihcWIVOvTgAm4="
