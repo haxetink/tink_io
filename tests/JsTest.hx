@@ -12,7 +12,7 @@ class JsTest {
 	
 	public function blob() {
 		var blob = new Blob(['tink'], {type: 'text/plain'});
-		var source = Source.ofBlob('Blob', blob);
+		var source = Source.ofJsBlob('Blob', blob);
 		source.all()
 			.next(function(chunk) {
 				asserts.assert(chunk.length == 4);
@@ -24,7 +24,7 @@ class JsTest {
 	
 	public function chunk() {
 		var blob = new Blob(['tink'], {type: 'text/plain'});
-		var source = Source.ofBlob('Blob', blob, {chunkSize: 1});
+		var source = Source.ofJsBlob('Blob', blob, {chunkSize: 1});
 		var total = 0;
 		source.chunked()
 			.forEach(function(chunk) {
