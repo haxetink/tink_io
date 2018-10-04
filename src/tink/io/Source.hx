@@ -55,7 +55,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   
   #if js
   @:noUsing static public inline function ofJsFile(name:String, file:js.html.File, ?options:{ ?chunkSize: Int }):RealSource
-    return ofBlob(name, file, options);
+    return ofJsBlob(name, file, options);
     
   @:noUsing static public inline function ofJsBlob(name:String, blob:js.html.Blob, ?options:{ ?chunkSize: Int }):RealSource {
     var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
