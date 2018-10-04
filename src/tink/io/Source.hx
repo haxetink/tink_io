@@ -53,6 +53,16 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   }
   #end
   
+  #if js
+  @:noUsing static public inline function ofFile(name:String, file:js.html.File, ?options:{ ?chunkSize: Int }):RealSource
+    return ofBlob(name, file, options);
+    
+  @:noUsing static public inline function ofBlob(name:String, blob:js.html.Blob, ?options:{ ?chunkSize: Int }):RealSource {
+    var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
+    return tink.io.js.BlobSource.wrap(name, blob, chunkSize);
+  }
+  #end
+  
   #if cs
   @:noUsing static public inline function ofCsStream(name:String, r:cs.system.io.Stream, ?options:{ ?chunkSize: Int }):RealSource {
     var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
