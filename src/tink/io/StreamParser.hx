@@ -50,7 +50,7 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
             case Progressed:
               if(lastPos != cursor.currentPos && cursor.currentPos < cursor.length) next() else cb(Resume);
             case Done(v): 
-              consume(v).map(function (o) {
+              consume(v).handle(function (o) {
                 resume = o.resume;
                 if (resume) {
                   if(lastPos != cursor.currentPos && cursor.currentPos < cursor.length) next() else cb(Resume);

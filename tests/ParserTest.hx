@@ -10,7 +10,6 @@ using tink.CoreApi;
 class ParserTest {
 	public function new() {}
 	
-	@:exclude
 	@:describe('Should halt properly after consuming a result (issue #23)')
 	public function properHalt() {
 		var src:IdealSource = '1';
