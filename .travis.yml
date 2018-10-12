@@ -28,6 +28,7 @@ script:
   #- lix run travix interp
   - lix run travix php
   - lix run travix cpp
+  # - lix run travix lua # https://github.com/HaxeFoundation/haxe/issues/7544
 
 jobs:
   include:

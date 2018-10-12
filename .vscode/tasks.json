@@ -1,6 +1,6 @@
 {
     "version": "0.1.0",
-    "command": "npm",
+    "command": "lix",
     "isShellCommand": true,
     "args": ["run","travix","php"],
     "problemMatcher": "$haxe"
