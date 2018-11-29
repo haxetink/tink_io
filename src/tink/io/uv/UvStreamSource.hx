@@ -33,7 +33,7 @@ class UvStreamSource extends Generator<Chunk, Error> {
     if(nread > 0) {
       handle.readStop();
       var bytes = Bytes.alloc(nread);
-      uv.Buf.unmanaged(buf).copyToBytes(bytes);
+      uv.Buf.unmanaged(buf).copyToBytes(bytes, nread);
       source.trigger.trigger(Link((bytes:Chunk), new UvStreamSource(source.name, handle)));
     }
     
@@ -44,9 +44,16 @@ class UvStreamSource extends Generator<Chunk, Error> {
         source.trigger.trigger(Fail(new Error(Uv.err_name(nread))));
       }
       
-      handle.asHandle().close(null);
+      if(!handle.asHandle().isClosing()) {
+        handle.asHandle().close(Callable.fromStaticFunction(onClose));
+        handle = null;
+      }
     }
     
     uv.Buf.unmanaged(buf).free();
   }
+  
+	static function onClose(handle:RawPointer<Handle_t>) {
+		uv.Stream.fromRawHandle(handle).destroy();
+	}
 }

@@ -14,7 +14,7 @@ class UvStreamSink extends SinkBase<Error, Noise> {
 	var name:String;
 	var handle:uv.Stream;
 	
-	function new(name, handle) {
+	public function new(name, handle) {
 		this.name = name;
 		this.handle = handle;
 	}
@@ -29,25 +29,30 @@ class UvStreamSink extends SinkBase<Error, Noise> {
 				trigger: trigger,
 			});
 			writeBuf.copyFromBytes(c);
-			handle.write(req, writeBuf, 1, Callable.fromStaticFunction(write));
+			handle.write(req, writeBuf, 1, Callable.fromStaticFunction(onWrite));
 			return trigger.asFuture();
 		});
 			
 		if (options.end)
 			ret.handle(function (end) {
-				handle.asHandle().close(null);
-				handle.destroy();
-				handle = null;
+				if(!handle.asHandle().isClosing()) {
+					handle.asHandle().close(Callable.fromStaticFunction(onClose));
+					handle = null;
+				}
 			});
 			
 		return ret.map(function (c) return c.toResult(Noise));
 	}
 	
-	static function write(handle:RawPointer<Write_t>, status:Int) {
+	static function onWrite(handle:RawPointer<Write_t>, status:Int) {
 		var write:uv.Write = handle;
 		var data:{buf:uv.Buf, trigger:FutureTrigger<Handled<Error>>} = write.getData();
 		data.buf.destroy();
 		write.destroy();
 		data.trigger.trigger(status == 0 ? Resume : Clog(new Error(Uv.err_name(status))));
+	}
+	
+	static function onClose(handle:RawPointer<Handle_t>) {
+		uv.Stream.fromRawHandle(handle).destroy();
 	}
 }
