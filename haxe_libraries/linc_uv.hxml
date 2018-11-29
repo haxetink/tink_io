@@ -1,0 +1,4 @@
+-D linc_uv=0.0.0
+# @install: lix --silent download "gh://github.com/darmie/linc_uv#f41465b51ad02ac13f7ac6a00ef93b66c7688318" into linc_uv/0.0.0/github/f41465b51ad02ac13f7ac6a00ef93b66c7688318
+# -cp ${HAXE_LIBCACHE}/linc_uv/0.0.0/github/f41465b51ad02ac13f7ac6a00ef93b66c7688318/
+-cp ../linc_uv
