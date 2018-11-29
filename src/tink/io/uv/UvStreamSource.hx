@@ -19,10 +19,7 @@ class UvStreamSource extends Generator<Chunk, Error> {
   }
   
   static function alloc(handle:RawPointer<Handle_t>, suggestedSize:Size_t, buf:RawPointer<Buf_t>):Void {
-		var suggestedSize:Int = cast suggestedSize;
-		var base:Pointer<Char> = cast Stdlib.nativeMalloc(suggestedSize);
-		buf[0].base = cast base;
-		buf[0].len = suggestedSize;
+    uv.Buf.fromRaw(buf).alloc(cast suggestedSize);
   }
   
   static function read(handle:RawPointer<Stream_t>, nread:SSize_t, buf:RawConstPointer<Buf_t>):Void {
