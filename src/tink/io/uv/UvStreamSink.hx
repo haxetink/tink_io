@@ -12,47 +12,24 @@ using tink.CoreApi;
 class UvStreamSink extends SinkBase<Error, Noise> {
 	
 	var name:String;
-	var handle:uv.Stream;
+	var wrapper:UvStreamWrapper;
 	
-	public function new(name, handle) {
+	public function new(name, wrapper) {
 		this.name = name;
-		this.handle = handle;
+		this.wrapper = wrapper;
 	}
 	
 	override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Noise>> {
 		var ret = source.forEach(function (c:Chunk) {
-			var trigger:FutureTrigger<Handled<Error>> = Future.trigger();
-			var req = new uv.Write();
-			var writeBuf = new uv.Buf(c.length);
-			req.setData({
-				buf: writeBuf,
-				trigger: trigger,
+			return wrapper.write(c).map(function(o) return switch o {
+				case Success(_): Resume;
+				case Failure(e): Clog(e);
 			});
-			writeBuf.copyFromBytes(c);
-			handle.write(req, writeBuf, 1, Callable.fromStaticFunction(onWrite));
-			return trigger.asFuture();
 		});
 			
 		if (options.end)
-			ret.handle(function (end) {
-				if(!handle.asHandle().isClosing()) {
-					handle.asHandle().close(Callable.fromStaticFunction(onClose));
-					handle = null;
-				}
-			});
+			ret.handle(function (_) wrapper.shutdown());
 			
 		return ret.map(function (c) return c.toResult(Noise));
-	}
-	
-	static function onWrite(handle:RawPointer<Write_t>, status:Int) {
-		var write:uv.Write = handle;
-		var data:{buf:uv.Buf, trigger:FutureTrigger<Handled<Error>>} = write.getData();
-		data.buf.destroy();
-		write.destroy();
-		data.trigger.trigger(status == 0 ? Resume : Clog(new Error(Uv.err_name(status))));
-	}
-	
-	static function onClose(handle:RawPointer<Handle_t>) {
-		uv.Stream.fromRawHandle(handle).destroy();
 	}
 }
