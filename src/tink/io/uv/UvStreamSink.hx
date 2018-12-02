@@ -1,7 +1,5 @@
 package tink.io.uv;
 
-import cpp.*;
-import uv.Uv;
 import tink.Chunk;
 import tink.io.Sink;
 import tink.streams.Stream;
@@ -20,15 +18,15 @@ class UvStreamSink extends SinkBase<Error, Noise> {
 	}
 	
 	override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Noise>> {
-		var ret = source.forEach(function (c:Chunk) {
-			return wrapper.write(c).map(function(o) return switch o {
+		var ret = source.forEach(function (chunk:Chunk) {
+			return wrapper.write(chunk).map(function(o) return switch o {
 				case Success(_): Resume;
 				case Failure(e): Clog(e);
 			});
 		});
 			
 		if (options.end)
-			ret.handle(function (_) wrapper.shutdown());
+			ret.handle(function (_) wrapper.shutdown().eager());
 			
 		return ret.map(function (c) return c.toResult(Noise));
 	}

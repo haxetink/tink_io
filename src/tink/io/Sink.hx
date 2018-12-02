@@ -47,6 +47,11 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
   static public inline function ofCsStream(name, r:cs.system.io.Stream):RealSink
     return tink.io.cs.CsSink.wrap(name, r);
   #end
+  
+  #if hxuv
+  // static public inline function ofUvStream(name, s:hxuv.Stream):RealSink
+  //   return tink.io.uv.UvStreamSink.wrap(name, s);
+  #end
 
   static public function ofOutput(name:String, target:haxe.io.Output, ?options:{ ?worker:Worker }):RealSink
     return new tink.io.std.OutputSink(name, target, switch options {

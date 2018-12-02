@@ -69,6 +69,11 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return tink.io.cs.CsSource.wrap(name, r, chunkSize);
   }
   #end
+  
+  #if hxuv
+  // @:noUsing static public inline function ofUvStream(name:String, s:hxuv.Stream):RealSource
+  //   return tink.io.uv.UvStreamSource.wrap(name, s);
+  #end
 
   @:noUsing static public inline function ofInput(name:String, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
     if (options == null)

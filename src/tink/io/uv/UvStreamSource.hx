@@ -1,8 +1,5 @@
 package tink.io.uv;
 
-import uv.Uv;
-import cpp.*;
-import haxe.io.*;
 import tink.streams.Stream;
 
 using tink.CoreApi;
