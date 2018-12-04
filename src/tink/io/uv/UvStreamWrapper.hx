@@ -22,12 +22,13 @@ class UvStreamWrapper {
     return Future.async(function(cb) {
       switch stream.readStart(function(status, bytes) {
         stream.readStop();
-        if(status > 0) cb(Success((bytes:Chunk)));
-        else if(status == 0) cb(Success(Chunk.EMPTY));
-        else if(status == ErrorCode.EOF) {
+        if(status.toErrorCode() > 0) cb(Success((bytes:Chunk)));
+        else if(status.toErrorCode() == 0) cb(Success(Chunk.EMPTY));
+        else {
           close();
-          cb(Success(null));
-        } else cb(Failure(UvError.ofStatus(status)));
+          if(status.is(EOF)) cb(Success(null));
+          else cb(Failure(UvError.ofStatus(status)));  
+        } 
       }) {
         case 0:
         case code: cb(Failure(UvError.ofStatus(code)));
@@ -37,7 +38,7 @@ class UvStreamWrapper {
   
   public function write(chunk:Chunk):Promise<Noise> {
     return Future.async(function(cb) {
-      switch stream.write(chunk, function(status) cb(status.toResult())) {
+      switch stream.write(chunk, function(status) cb(status.toErrorCode().toResult())) {
         case 0:
         case code: cb(Failure(UvError.ofStatus(code)));
       }
@@ -46,7 +47,7 @@ class UvStreamWrapper {
   
   public function shutdown():Promise<Noise> {
     return Future.async(function(cb) {
-      switch stream.shutdown(function(status) cb(status.toResult())) {
+      switch stream.shutdown(function(status) cb(status.toErrorCode().toResult())) {
         case 0:
         case code: cb(Failure(UvError.ofStatus(code)));
       }
