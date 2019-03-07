@@ -62,7 +62,7 @@ class OutputSink extends tink.io.Sink.SinkBase<Error, Noise> {
     }));
     
     if (options.end)
-      ret.handle(function (end) try target.close() catch (e:Dynamic) {});    
+      ret.handle(function (end) try{ target.flush(); target.close();} catch (e:Dynamic) {});    
     
     return ret.map(function (c) return c.toResult(Noise, rest));    
   }
