@@ -14,12 +14,12 @@ enum PipeResult<In, Out, Result> {
 class PipeResultTools {
   
   /**
-   * Transform PipeResult to an Outcome of Bool, indicating the source is completely written or not
+   * Transform PipeResult to an Outcome of the sink result
    */
-  static public function toOutcome<EIn, FailingWith, Result>(result:PipeResult<EIn, FailingWith, Result>):Outcome<Bool, Error> {
+  static public function toOutcome<EIn, FailingWith, Result>(result:PipeResult<EIn, FailingWith, Result>):Outcome<Option<Result>, Error> {
     return switch result {
-      case AllWritten: Success(true);
-      case SinkEnded(_): Success(false);
+      case AllWritten: Success(None);
+      case SinkEnded(result, _): Success(Some(result));
       case SinkFailed(e, _) | SourceFailed(e): Failure(e);
     }
   }
