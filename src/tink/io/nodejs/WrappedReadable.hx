@@ -2,6 +2,7 @@ package tink.io.nodejs;
 
 import js.node.Buffer;
 import js.node.stream.Readable.IReadable;
+import tink.chunk.nodejs.BufferChunk;
 
 using tink.CoreApi;
 
@@ -40,7 +41,7 @@ class WrappedReadable {
                 else
                   chunk;
                   
-              cb(Success((new WrappedBuffer(buf) : Chunk)));
+              cb(Success((new BufferChunk(buf) : Chunk)));
           }
         catch (e:Dynamic) {
           cb(Failure(Error.withData('Error while reading from $name', e)));
