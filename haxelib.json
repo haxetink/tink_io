@@ -6,8 +6,8 @@
   "contributors": [
     "back2dos"
   ],
-  "releasenote": "Fixed a StreamParser bug",
-  "version": "0.6.2",
+  "releasenote": "Moved BufferChunk to tink_chunk",
+  "version": "0.7.0",
   "dependencies": {
     "tink_chunk": "",
     "tink_streams" : ""
