@@ -10,6 +10,7 @@ using sys.io.File;
 using sys.FileSystem;
 
 @:asserts
+@:timeout(15000)
 class PipeTest {
   
   public function new() {}
