@@ -25,7 +25,7 @@ script:
   - lix run travix node
   - lix run travix neko
   #- lix run travix java
-  - lix run travix interp
+  # - lix run travix interp # haxe3 fails
   - lix run travix php
   - lix run travix cpp
   # - lix run travix lua # https://github.com/HaxeFoundation/haxe/issues/7544
