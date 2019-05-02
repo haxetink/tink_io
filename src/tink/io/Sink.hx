@@ -157,8 +157,8 @@ class CollectSink<Result> extends SinkBase<Error, Result> {
     return
       if(ended)
         result.asPromise().map(function(o) return switch o {
-          case Success(result): SinkEnded(result, source);
-          case Failure(e): SinkFailed(e, source);
+          case Success(result): SinkEnded(result, (cast source:Source<EIn>));
+          case Failure(e): SinkFailed(e, (cast source:Source<EIn>));
         });
       else
         source.forEach(function(chunk) {
@@ -171,8 +171,8 @@ class CollectSink<Result> extends SinkBase<Error, Result> {
               process(collected).map(function(o) {
                 result.trigger(o);
                 return switch o {
-                  case Success(result): SinkEnded(result, Source.EMPTY);
-                  case Failure(e): SinkFailed(e, Source.EMPTY);
+                  case Success(result): SinkEnded(result, (cast Source.EMPTY:Source<EIn>));
+                  case Failure(e): SinkFailed(e, (cast Source.EMPTY:Source<EIn>));
                 }
               });
             } else {
