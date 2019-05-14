@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: xenial
 
 stages:
   - test
@@ -14,21 +14,22 @@ os:
 
 env:
   - HAXE_VERSION=3.4.7
-  - HAXE_VERSION=latest
+  - HAXE_VERSION=nightly
   
 install:
-  - npm i -g lix
+  - npm i -g lix@15.3.13
   - lix install haxe $HAXE_VERSION
   - lix download
   
 script:
   - lix run travix node
   - lix run travix neko
+  - if [[ "$(haxe -version)" =~ ^4.* ]]; then lix run travix java -D jvm; fi
+  - if [[ "$(haxe -version)" =~ ^4.* ]]; then lix run travix interp; fi # haxe3 fails
+  - if [[ "$(haxe -version)" =~ ^4.* ]]; then lix run travix lua; fi # https://github.com/HaxeFoundation/haxe/issues/7544
   #- lix run travix java
-  # - lix run travix interp # haxe3 fails
   - lix run travix php
   - lix run travix cpp
-  # - lix run travix lua # https://github.com/HaxeFoundation/haxe/issues/7544
 
 jobs:
   include:
