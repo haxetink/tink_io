@@ -1,5 +1,7 @@
 package tink.io.js;
 
+import #if haxe4 js.lib.Error #else js.Error #end as JsError;
+
 import haxe.io.Bytes;
 import js.html.*;
 import tink.streams.Stream;
@@ -24,7 +26,7 @@ class BlobSource extends Generator<Chunk, Error> {
           var chunk:Chunk = Bytes.ofData(reader.result);
           cb(Link(chunk, new BlobSource(name, blob, end, chunkSize)));
         }
-        reader.onerror = function(e:js.Error) cb(Fail(Error.ofJsError(e)));
+        reader.onerror = function(e:JsError) cb(Fail(Error.ofJsError(e)));
         reader.readAsArrayBuffer(blob.slice(pos, end));
       }
     }, true));
