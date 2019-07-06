@@ -7,8 +7,10 @@ import tink.streams.IdealStream;
 import tink.streams.RealStream;
 import tink.streams.Stream;
 
+#if (nodejs && !macro)
 import #if haxe4 js.lib.Error #else js.Error #end as JsError;
-
+#end
+  
 using tink.io.Source;
 using tink.CoreApi;
 
