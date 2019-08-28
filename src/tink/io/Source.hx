@@ -36,21 +36,24 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     var native = @:privateAccess new js.node.stream.PassThrough(); // https://github.com/HaxeFoundation/hxnodejs/pull/91
     
     var source = chunked();
+    
     function write() {
       source.forEach(function(chunk:Chunk) {
-        var ok = native.write(js.node.Buffer.hxFromBytes(chunk.toBytes()));
+        var ok = native.write(chunk.toBuffer());
         return ok ? Resume : Finish;
       }).handle(function(o) switch o {
         case Depleted:
+          native.removeListener('drain', write);
           native.end();
         case Halted(rest):
+          // 'drain' event may be already fired before reaching here
           source = rest;
-          native.once('drain', write);
         case Failed(e):
           native.emit('error', new JsError(e.message));
       });
     }
     
+    native.on('drain', haxe.Timer.delay.bind(write, 1)); // delay to make sure `rest` is assigned to `source` in the Halted handler
     write();
     
     return native;
