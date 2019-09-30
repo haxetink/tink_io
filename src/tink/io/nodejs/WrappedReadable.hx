@@ -20,7 +20,8 @@ class WrappedReadable {
     end = Future.async(function (cb) {
       native.once('end', function () cb(Success(null)));
       native.once('error', function (e:{ code:String, message:String }) cb(Failure(new Error('${e.code} - Failed reading from $name because ${e.message}'))));      
-    });
+    })
+    .eager(); // async laziness fix for tink_core v2
     if (onEnd != null)
       end.handle(function () 
         js.Node.process.nextTick(onEnd)
