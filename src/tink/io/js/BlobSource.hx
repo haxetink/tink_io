@@ -29,7 +29,7 @@ class BlobSource extends Generator<Chunk, Error> {
         reader.onerror = function(e:JsError) cb(Fail(Error.ofJsError(e)));
         reader.readAsArrayBuffer(blob.slice(pos, end));
       }
-    }, true));
+    } #if !tink_core_2 , true #end));
   }
   
   static inline public function wrap(name, blob, chunkSize)

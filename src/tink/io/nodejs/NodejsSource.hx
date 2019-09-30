@@ -13,7 +13,7 @@ class NodejsSource extends Generator<Chunk, Error> {
         case Success(chunk): Link(chunk, new NodejsSource(target));
         case Failure(e): Fail(e);
       }));
-    }, true));    
+    } #if !tink_core_2 , true #end));
   
   static public function wrap(name, native, chunkSize, onEnd)
     return new NodejsSource(new WrappedReadable(name, native, chunkSize, onEnd));

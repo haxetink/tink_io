@@ -58,6 +58,6 @@ class InputSource extends Generator<Chunk, Error> {
         }
         cb(step);
       });
-    }, true));
+    } #if !tink_core_2 , true #end));
   }
 }
