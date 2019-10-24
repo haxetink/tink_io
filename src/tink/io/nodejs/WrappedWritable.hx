@@ -2,6 +2,8 @@ package tink.io.nodejs;
 
 import js.node.Buffer;
 import js.node.stream.Writable;
+import tink.Chunk;
+
 using tink.CoreApi;
 
 class WrappedWritable {
