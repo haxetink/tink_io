@@ -6,8 +6,8 @@
   "contributors": [
     "back2dos"
   ],
-  "releasenote": "Moved BufferChunk to tink_chunk",
-  "version": "0.7.0",
+  "releasenote": "Fixes Source#toNodeStream",
+  "version": "0.7.1",
   "dependencies": {
     "tink_chunk": "",
     "tink_streams" : ""
