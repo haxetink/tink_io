@@ -64,6 +64,6 @@ private class WriteHandler implements CompletionHandler<Integer, Int>  {
 	}
 	
 	public function failed(exc:Throwable, attachment:Int) {
-		cb.invoke(Clog(Error.withData('Write failed', exc)));
+		cb.invoke(Clog(Error.withData('Write failed for "${parent.name}", reason: ' + exc.getMessage(), exc)));
 	}
 }

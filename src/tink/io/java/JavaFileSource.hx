@@ -60,6 +60,6 @@ private class ReadHandler implements CompletionHandler<Integer, ByteBuffer>  {
 	}
 	
 	public function failed(exc:Throwable, attachment:ByteBuffer) {
-		cb.invoke(Fail(Error.withData('Read failed', exc)));
+		cb.invoke(Fail(Error.withData('Read failed for "${parent.name}", reason: ' + exc.getMessage(), exc)));
 	}
 }
