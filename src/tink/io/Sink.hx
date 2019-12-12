@@ -47,6 +47,11 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
   static public inline function ofCsStream(name, r:cs.system.io.Stream):RealSink
     return tink.io.cs.CsSink.wrap(name, r);
   #end
+  
+  #if java
+  static public inline function ofJavaFileChannel(name, channel:java.nio.channels.AsynchronousFileChannel):RealSink
+    return tink.io.java.JavaFileSink.wrap(name, channel);
+  #end
 
   static public function ofOutput(name:String, target:haxe.io.Output, ?options:{ ?worker:Worker }):RealSink
     return new tink.io.std.OutputSink(name, target, switch options {

@@ -43,14 +43,15 @@ class PipeTest {
   }
 
   function readFile(name:String, ?chunkSize) {
-    return
-      #if nodejs
+    #if nodejs
+     return
         Source.ofNodeStream(
           'Input from file $name', 
           js.node.Fs.createReadStream(name), 
           { chunkSize: chunkSize }
         );
-      #elseif cs
+    #elseif cs
+      return
         Source.ofCsStream(
           'Input from file $name', 
           new cs.system.io.FileStream(
@@ -61,33 +62,50 @@ class PipeTest {
           ),
           { chunkSize: chunkSize }
         );
-      #elseif sys
+    #elseif java
+      var path = java.nio.file.Paths.get(name, new java.NativeArray(0));
+      var op:java.NativeArray<java.nio.file.OpenOption> = java.NativeArray.make(cast java.nio.file.StandardOpenOption.READ);
+      return
+        Source.ofJavaFileChannel(
+          'Input from file $name',
+          java.nio.channels.AsynchronousFileChannel.open(path, op),
+          { chunkSize: chunkSize }
+        );
+    #elseif sys
+      return
         Source.ofInput(
           'Input from file $name', 
           sys.io.File.read(name, true), 
           { chunkSize: chunkSize }
         );
-      #else
-        #error "not implemented"
-      #end 
+    #else
+      #error "not implemented"
+    #end 
   }
 
   function writeFile(name:String) {
-    return
-      #if nodejs
+    #if nodejs
+      return
         Sink.ofNodeStream('Output to file $name', js.node.Fs.createWriteStream(name));
-      #elseif cs
+    #elseif cs
+      return
         Sink.ofCsStream('Output to file $name', new cs.system.io.FileStream(
           name,
           cs.system.io.FileMode.OpenOrCreate,
           cs.system.io.FileAccess.Write,
           cs.system.io.FileShare.ReadWrite
       ));
-      #elseif sys
+    #elseif java
+      var path = java.nio.file.Paths.get(name, new java.NativeArray(0));
+      var op:java.NativeArray<java.nio.file.OpenOption> = java.NativeArray.make(cast java.nio.file.StandardOpenOption.CREATE, cast java.nio.file.StandardOpenOption.WRITE);
+      return
+        Sink.ofJavaFileChannel('Output to file $name', java.nio.channels.AsynchronousFileChannel.open(path, op));
+    #elseif sys
+      return
         Sink.ofOutput('Output to file $name', sys.io.File.write(name, true));
-      #else
-        #error "not implemented"
-      #end
+    #else
+      #error "not implemented"
+    #end
   }
   
   public function empty() {
