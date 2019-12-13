@@ -12,6 +12,12 @@ class RunTests {
       new ParserTest(),
       #if (js && !nodejs) new JsTest(), #end
     ])).handle(Runner.exit);
+    
+    
+    #if (java && jvm)
+    // FIXME: this prevents the tests from exiting early, to be investigated
+    haxe.Timer.delay(function() trace('End'), 20000);
+    #end
   }
   
 }
