@@ -50,11 +50,11 @@ private class ReadHandler implements CompletionHandler<Integer, ByteBuffer>  {
 			else if(result == 0) {
 				Link(Chunk.EMPTY, new JavaFileSource(parent.name, parent.channel, parent.pos, parent.size));
 			} else {
-				// TODO: maybe we don't need to do this memcpy
 				var len = result.toInt();
-				var data = new java.NativeArray(len);
-				java.lang.System.arraycopy(buffer.array(), buffer.arrayOffset(), data, 0, len);
-				Link((Bytes.ofData(data):Chunk), new JavaFileSource(parent.name, parent.channel, parent.pos + len, parent.size));
+				var data = buffer.array();
+				var chunk:Chunk = Bytes.ofData(data);
+				var start = buffer.arrayOffset();
+				Link(chunk.slice(start, start + len), new JavaFileSource(parent.name, parent.channel, parent.pos + len, parent.size));
 			}
 		);
 	}

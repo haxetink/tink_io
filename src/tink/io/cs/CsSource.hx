@@ -20,14 +20,8 @@ class CsSource extends Generator<Chunk, Error> {
 				cb(switch stream.EndRead(ar) {
 					case 0: End;
 					case read: 
-						var buffer = if(read < size) {
-							var copy = new cs.NativeArray(read);
-							cs.system.Array.Copy(buffer, 0, copy, 0, read);
-							copy;
-						} else {
-							buffer;
-						}
-						Link((Bytes.ofData(buffer):Chunk), new CsSource(name, stream, size));
+						var chunk:Chunk = Bytes.ofData(buffer);
+						Link(chunk.slice(0, read), new CsSource(name, stream, size));
 				});
 			}), null);
 		}));
