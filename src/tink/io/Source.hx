@@ -82,6 +82,10 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
     return tink.io.java.JavaFileSource.wrap(name, channel, chunkSize);
   }
+  @:noUsing static public inline function ofJavaByteChannel(name:String, channel:java.nio.channels.AsynchronousByteChannel, ?options:{ ?chunkSize: Int }):RealSource {
+    var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
+    return tink.io.java.JavaByteSource.wrap(name, channel, chunkSize);
+  }
   #end
 
   @:noUsing static public inline function ofInput(name:String, input, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
