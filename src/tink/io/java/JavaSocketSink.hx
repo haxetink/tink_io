@@ -4,7 +4,7 @@ import haxe.io.Bytes;
 import java.lang.Integer;
 import java.lang.Throwable;
 import java.nio.channels.CompletionHandler;
-import java.nio.channels.AsynchronousByteChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.ByteBuffer;
 import tink.streams.Stream;
 import tink.Chunk;
@@ -14,10 +14,10 @@ using tink.io.PipeResult;
 using tink.CoreApi;
 
 @:allow(tink.io.java)
-class JavaByteSink extends SinkBase<Error, Noise> {
+class JavaSocketSink extends SinkBase<Error, Noise> {
 	
 	var name:String;
-	var channel:AsynchronousByteChannel;
+	var channel:AsynchronousSocketChannel;
 	
 	function new(name, channel) {
 		this.name = name;
@@ -31,25 +31,25 @@ class JavaByteSink extends SinkBase<Error, Noise> {
 					cb.invoke(Resume);
 				} else {
 					var buffer = ByteBuffer.wrap(c.toBytes().getData());
-					channel.write(buffer, null, new WriteHandler(cb, this));
+					channel.write(buffer, 0, new WriteHandler(cb, this));
 				}
 			});
 		});
 			
 		if (options.end)
-			ret.handle(function (end) channel.close());
+			ret.handle(function (end) channel.shutdownOutput());
 			
 		return ret.map(function (c) return c.toResult(Noise));
 	}
 	
 	static inline public function wrap(name, channel) {
-		return new JavaByteSink(name, channel);
+		return new JavaSocketSink(name, channel);
 	}
 }
 
 private class WriteHandler implements CompletionHandler<Integer, Int>  {
 	var cb:Callback<Handled<Error>>;
-	var parent:JavaByteSink;
+	var parent:JavaSocketSink;
 	
 	public function new(cb, parent) {
 		this.cb = cb;

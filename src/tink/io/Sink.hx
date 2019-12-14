@@ -51,8 +51,8 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
   #if java
   static public inline function ofJavaFileChannel(name, channel:java.nio.channels.AsynchronousFileChannel):RealSink
     return tink.io.java.JavaFileSink.wrap(name, channel);
-  static public inline function ofJavaByteChannel(name, channel:java.nio.channels.AsynchronousByteChannel):RealSink
-    return tink.io.java.JavaByteSink.wrap(name, channel);
+  static public inline function ofJavaSocketChannel(name, channel:java.nio.channels.AsynchronousSocketChannel):RealSink
+    return tink.io.java.JavaSocketSink.wrap(name, channel);
   #end
 
   static public function ofOutput(name:String, target:haxe.io.Output, ?options:{ ?worker:Worker }):RealSink
