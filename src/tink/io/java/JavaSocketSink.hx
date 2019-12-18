@@ -17,10 +17,10 @@ private typedef SocketWriteContext = WriteContext<AsynchronousSocketChannel>;
 
 @:allow(tink.io.java)
 class JavaSocketSink extends SinkBase<Error, Noise> {
+	static var handler = new WriteHandler();
 	
 	var name:String;
 	var channel:AsynchronousSocketChannel;
-	var handler = new WriteHandler();
 	
 	function new(name, channel) {
 		this.name = name;

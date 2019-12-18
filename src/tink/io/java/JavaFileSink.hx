@@ -17,10 +17,10 @@ private typedef FileWriteContext = WriteContext<AsynchronousFileChannel>;
 
 @:allow(tink.io.java)
 class JavaFileSink extends SinkBase<Error, Noise> {
+	static var handler = new WriteHandler();
 	
 	var name:String;
 	var channel:AsynchronousFileChannel;
-	var handler = new WriteHandler();
 	
 	function new(name, channel) {
 		this.name = name;
