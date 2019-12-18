@@ -13,17 +13,18 @@ import tink.io.Sink;
 using tink.io.PipeResult;
 using tink.CoreApi;
 
+private typedef FileWriteContext = WriteContext<AsynchronousFileChannel>;
+
 @:allow(tink.io.java)
 class JavaFileSink extends SinkBase<Error, Noise> {
 	
 	var name:String;
 	var channel:AsynchronousFileChannel;
-	var pos:Int;
+	var handler = new WriteHandler();
 	
-	function new(name, channel, pos) {
+	function new(name, channel) {
 		this.name = name;
 		this.channel = channel;
-		this.pos = pos;
 	}
 	
 	override public function consume<EIn>(source:Stream<Chunk, EIn>, options:PipeOptions):Future<PipeResult<EIn, Error, Noise>> {
@@ -32,8 +33,15 @@ class JavaFileSink extends SinkBase<Error, Noise> {
 				if(c.length == 0) {
 					cb.invoke(Resume);
 				} else {
-					var buffer = ByteBuffer.wrap(c.toBytes().getData());
-					channel.write(buffer, pos, null, new WriteHandler(cb, this));
+					var ctx:FileWriteContext = {
+						buffer: ByteBuffer.wrap(c.toBytes().getData()),
+						cb: cb,
+						name: name,
+						total: c.length,
+						channel: channel,
+						written: 0,
+					}
+					channel.write(ctx.buffer, ctx.written, ctx, handler);
 				}
 			});
 		});
@@ -45,25 +53,21 @@ class JavaFileSink extends SinkBase<Error, Noise> {
 	}
 	
 	static inline public function wrap(name, channel) {
-		return new JavaFileSink(name, channel, 0);
+		return new JavaFileSink(name, channel);
 	}
 }
 
-private class WriteHandler implements CompletionHandler<Integer, Int>  {
-	var cb:Callback<Handled<Error>>;
-	var parent:JavaFileSink;
+private class WriteHandler implements CompletionHandler<Integer, FileWriteContext>  {
+	public function new() {}
 	
-	public function new(cb, parent) {
-		this.cb = cb;
-		this.parent = parent;
+	public function completed(result:Integer, ctx:FileWriteContext) {
+		if((ctx.written += result.toInt()) < ctx.total)
+			ctx.channel.write(ctx.buffer, ctx.written, ctx, this);
+		else
+			ctx.cb.invoke(Resume);
 	}
 	
-	public function completed(result:Integer, attachment:Int) {
-		parent.pos += result.toInt();
-		cb.invoke(Resume);
-	}
-	
-	public function failed(exc:Throwable, attachment:Int) {
-		cb.invoke(Clog(Error.withData('Write failed for "${parent.name}", reason: ' + exc.getMessage(), exc)));
+	public function failed(exc:Throwable, ctx:FileWriteContext) {
+		ctx.cb.invoke(Clog(Error.withData('Write failed for "${ctx.name}", reason: ' + exc.getMessage(), exc)));
 	}
 }
