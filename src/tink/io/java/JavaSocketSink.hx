@@ -13,8 +13,6 @@ import tink.io.Sink;
 using tink.io.PipeResult;
 using tink.CoreApi;
 
-private typedef SocketWriteContext = WriteContext<AsynchronousSocketChannel>;
-
 @:allow(tink.io.java)
 class JavaSocketSink extends SinkBase<Error, Noise> {
 	static var handler = new WriteHandler();
@@ -33,7 +31,7 @@ class JavaSocketSink extends SinkBase<Error, Noise> {
 				if(c.length == 0) {
 					cb.invoke(Resume);
 				} else {
-					var ctx:SocketWriteContext = {
+					var ctx:WriteContext = {
 						buffer: ByteBuffer.wrap(c.toBytes().getData()),
 						cb: cb,
 						name: name,
@@ -58,17 +56,26 @@ class JavaSocketSink extends SinkBase<Error, Noise> {
 	}
 }
 
-private class WriteHandler implements CompletionHandler<Integer, SocketWriteContext>  {
+@:structInit
+private class WriteContext {
+	public var buffer:ByteBuffer;
+	public var cb:Callback<Handled<Error>>;
+	public var name:String;
+	public var written:Int;
+	public var total:Int;
+	public var channel:AsynchronousSocketChannel;
+}
+private class WriteHandler implements CompletionHandler<Integer, WriteContext>  {
 	public function new() {}
 	
-	public function completed(result:Integer, ctx:SocketWriteContext) {
+	public function completed(result:Integer, ctx:WriteContext) {
 		if((ctx.written += result.toInt()) < ctx.total)
 			ctx.channel.write(ctx.buffer, ctx, this);
 		else
 			ctx.cb.invoke(Resume);
 	}
 	
-	public function failed(exc:Throwable, ctx:SocketWriteContext) {
+	public function failed(exc:Throwable, ctx:WriteContext) {
 		ctx.cb.invoke(Clog(Error.withData('Write failed for "${ctx.name}", reason: ' + exc.getMessage(), exc)));
 	}
 }
