@@ -65,7 +65,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return ofJsBlob(name, file, options);
     
   @:noUsing static public inline function ofJsBlob(name:String, blob:js.html.Blob, ?options:{ ?chunkSize: Int }):RealSource {
-    var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
+    var chunkSize = options == null || options.chunkSize == null ? 1 << 24 : options.chunkSize;
     return tink.io.js.BlobSource.wrap(name, blob, chunkSize);
   }
   #end
@@ -79,11 +79,11 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   
   #if java
   @:noUsing static public inline function ofJavaFileChannel(name:String, channel:java.nio.channels.AsynchronousFileChannel, ?options:{ ?chunkSize: Int }):RealSource {
-    var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
+    var chunkSize = options == null || options.chunkSize == null ? 1 << 16 : options.chunkSize;
     return tink.io.java.JavaFileSource.wrap(name, channel, chunkSize);
   }
   @:noUsing static public inline function ofJavaSocketChannel(name:String, channel:java.nio.channels.AsynchronousSocketChannel, ?options:{ ?chunkSize: Int }):RealSource {
-    var chunkSize = options == null || options.chunkSize == null ? 4096 : options.chunkSize;
+    var chunkSize = options == null || options.chunkSize == null ? 1 << 16 : options.chunkSize;
     return tink.io.java.JavaSocketSource.wrap(name, channel, chunkSize);
   }
   #end
