@@ -4,6 +4,7 @@ import tink.streams.Stream;
 
 using tink.CoreApi;
 
+@:using(tink.io.PipeResult.PipeResultTools)
 enum PipeResult<In, Out, Result> {
   AllWritten:PipeResult<In, Out, Result>;
   SinkEnded(result:Result, rest:Source<In>):PipeResult<In, Out, Result>;
