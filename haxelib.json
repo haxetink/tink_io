@@ -6,8 +6,8 @@
   "contributors": [
     "back2dos"
   ],
-  "releasenote": "Fixes Source#toNodeStream",
-  "version": "0.7.1",
+  "releasenote": "Add some Java impl & various fixes",
+  "version": "0.8.0",
   "dependencies": {
     "tink_chunk": "",
     "tink_streams" : ""
