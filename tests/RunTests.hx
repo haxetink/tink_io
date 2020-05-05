@@ -10,6 +10,7 @@ class RunTests {
       #if (sys || nodejs) new PipeTest(),#end
       new SourceTest(),
       new ParserTest(),
+      new CastTest(),
       #if (js && !nodejs) new JsTest(), #end
     ])).handle(Runner.exit);
     

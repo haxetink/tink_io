@@ -100,18 +100,6 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   public function chunked():Stream<Chunk, E>
     return this;
   
-  @:from static public function ofError(e:Error):RealSource
-    return (e : Stream<Chunk, Error>);
-
-  @:from static function ofFuture(f:Future<IdealSource>):IdealSource
-    return Stream.flatten((cast f:Future<Stream<Chunk, Noise>>)); // TODO: I don't understand why this needs a cast
-    
-  @:from static function ofPromised(p:Promise<RealSource>):RealSource
-    return Stream #if cs .dirtyFlatten #else .flatten #end (p.map(function (o) return switch o {
-      case Success(s): (s:SourceObject<Error>);
-      case Failure(e): ofError(e);
-    }));
-  
   static public function concatAll<E>(s:Stream<Chunk, E>)
     return s.reduce(Chunk.EMPTY, function (res:Chunk, cur:Chunk) return Progress(res & cur));
 
@@ -153,6 +141,18 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
       return out;
     });
   }
+  
+  @:from static public function ofError(e:Error):RealSource
+    return (e : Stream<Chunk, Error>);
+
+  @:from static function ofFuture(f:Future<IdealSource>):IdealSource
+    return Stream.flatten((cast f:Future<Stream<Chunk, Noise>>)); // TODO: I don't understand why this needs a cast
+    
+  @:from static function ofPromised(p:Promise<RealSource>):RealSource
+    return Stream #if cs .dirtyFlatten #else .flatten #end (p.map(function (o) return switch o {
+      case Success(s): (s:SourceObject<Error>);
+      case Failure(e): ofError(e);
+    }));
     
   @:from static inline function ofChunk<E>(chunk:Chunk):Source<E>
     return new Single(chunk);
@@ -160,8 +160,26 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
   @:from static inline function ofString<E>(s:String):Source<E>
     return ofChunk(s);
     
-  @:from static inline function ofBytes<E>(b:Bytes):Source<E>
+  @:from static inline function ofBytes<Er>(b:Bytes):Source<Er>
     return ofChunk(b);
+
+  @:from static inline function ofFutureChunk<E>(chunk:Future<Chunk>):Source<E>
+    return cast ofFuture(chunk.map(ofChunk));
+
+  @:from static inline function ofFutureString<E>(s:Future<String>):Source<E>
+    return cast ofFuture(s.map(ofString));
+    
+  @:from static inline function ofFutureBytes<E>(b:Future<Bytes>):Source<E>
+    return cast ofFuture(b.map(ofBytes));
+
+  @:from static inline function ofPromiseChunk(chunk:Promise<Chunk>):RealSource
+    return ofPromised(chunk.next(ofChunk));
+
+  @:from static inline function ofPromiseString(s:Promise<String>):RealSource
+    return ofPromised(s.next(ofString));
+    
+  @:from static inline function ofPromiseBytes(b:Promise<Bytes>):RealSource
+    return ofPromised(b.next(ofBytes));
     
 }
 
