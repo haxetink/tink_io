@@ -1,0 +1,3 @@
+# @install: lix --silent download "gh://github.com/brave-pi/hxjs-http2#b86cc5c4f80e04b1f895da733a01b53179adc37b" into hxjs-http2/0.0.0/github/b86cc5c4f80e04b1f895da733a01b53179adc37b
+-cp ${HAXE_LIBCACHE}/hxjs-http2/0.0.0/github/b86cc5c4f80e04b1f895da733a01b53179adc37b/.
+-D hxjs-http2=0.0.0
