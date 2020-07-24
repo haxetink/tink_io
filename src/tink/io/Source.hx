@@ -29,7 +29,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
 	inline function get_depleted()
 		return this.depleted;
 
-	#if (js && !nodejs && !macro && hxnodejs_http2)
+	#if (js && !nodejs && !macro && hxjs_http2)
 	@:noUsing static public inline function ofJsStream(name:String, r:js.Stream.ReadableStream, ?options:{?chunkSize:Int, ?onEnd:Void->Void}):RealSource {
 		if (options == null)
 			options = {};
