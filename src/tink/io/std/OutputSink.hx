@@ -32,17 +32,7 @@ class OutputSink extends tink.io.Sink.SinkBase<Error, Noise> {
             return try {
               Success(target.writeBytes(bytes, pos, bytes.length - pos));
             }
-            catch (e:haxe.io.Eof) {
-              Success(-1);
-            }
-            catch (e:haxe.io.Error) switch e {
-              case Blocked: Success(0);
-              default: Failure(Error.withData('Error writing to $name', e));
-            }
-            catch (e:TypedError<Dynamic>) {
-              Failure(cast e);
-            }
-            catch (e:Dynamic) {
+            catch (e) {
               Failure(Error.withData('Error writing to $name', e));
             }
         ).handle(function (o) switch o {
