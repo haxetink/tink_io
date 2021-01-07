@@ -146,10 +146,10 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return (e : Stream<Chunk, Error>);
 
   @:from static function ofFuture(f:Future<IdealSource>):IdealSource
-    return Stream.flatten((cast f:Future<Stream<Chunk, Noise>>)); // TODO: I don't understand why this needs a cast
+    return Stream.future((cast f:Future<Stream<Chunk, Noise>>)); // TODO: I don't understand why this needs a cast
     
   @:from static function ofPromised(p:Promise<RealSource>):RealSource
-    return Stream #if cs .dirtyFlatten #else .flatten #end (p.map(function (o) return switch o {
+    return Stream #if cs .dirtyFuture #else .future #end (p.map(function (o) return switch o {
       case Success(s): (s:SourceObject<Error>);
       case Failure(e): ofError(e);
     }));
