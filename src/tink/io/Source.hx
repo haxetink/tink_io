@@ -1,31 +1,74 @@
 package tink.io;
-
+#if hxjs_http2
+import js.lib.Uint8Array;
+import js.Stream;
+#end
 import haxe.io.Bytes;
 import tink.io.Sink;
 import tink.io.StreamParser;
 import tink.streams.IdealStream;
 import tink.streams.RealStream;
 import tink.streams.Stream;
-
+import tink.io.Transformer;
 #if (nodejs && !macro)
 import #if haxe4 js.lib.Error #else js.Error #end as JsError;
 #end
-  
+
 using tink.io.Source;
 using tink.CoreApi;
 
 @:forward(reduce)
-abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
-  
-  public static var EMPTY(default, null):IdealSource = Empty.make();
-  
-  @:to inline function dirty():Source<Error>
-    return cast this;
-  
-  public var depleted(get, never):Bool;
-    inline function get_depleted() return this.depleted;
+abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> {
+	public static var EMPTY(default, null):IdealSource = Empty.make();
 
-  #if (nodejs && !macro)
+	@:to inline function dirty():Source<Error>
+		return cast this;
+
+	public var depleted(get, never):Bool;
+
+	inline function get_depleted()
+		return this.depleted;
+
+	#if (js && !nodejs && !macro && hxjs_http2)
+	@:noUsing static public inline function ofJsStream(name:String, r:js.Stream.ReadableStream, ?options:{?chunkSize:Int, ?onEnd:Void->Void}):RealSource {
+		if (options == null)
+			options = {};
+		return tink.io.js.JsSource.wrap(name, r, options.chunkSize, options.onEnd);
+	}
+
+	public function toJsStream():js.Stream.ReadableStream {
+		var source = chunked();
+		function write(controller:ReadableByteStreamController):js.lib.Promise<Dynamic> {
+			return source.forEach(function(chunk:Chunk) {
+				controller.enqueue(new Uint8Array(chunk.toBytes().getData()));
+				return Resume;
+			}).next(function(o) return switch o {
+				case Depleted:
+					controller.close();
+					Success(Noise);
+				case Halted(rest):
+					source = rest;
+					Success(Noise);
+				case Failed(e):
+					controller.error(e.message);
+					Failure(e);
+			});
+		}
+		var native = new js.Stream.ReadableStream(cast {
+			start: write,
+			pull: function(controller) {
+				return null;
+			},
+			cancel: function(reason) {
+				return null;
+			},
+			type: "bytes"
+		});
+		return native;
+	}
+	#end
+
+	#if (nodejs && !macro)
   @:noUsing static public inline function ofNodeStream(name:String, r:js.node.stream.Readable.IReadable, ?options:{ ?chunkSize: Int, ?onEnd:Void->Void }):RealSource {
     if (options == null) 
       options = {};

@@ -1,5 +1,9 @@
 tests.hxml 
 -lib travix 
 -lib tink_io 
+--each
 -lib hxnodejs 
 -js bin/node/tests.js
+--next
+-lib hxjs-http2
+-js bin/js/tests.js
