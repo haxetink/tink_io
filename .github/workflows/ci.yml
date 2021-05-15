@@ -17,11 +17,15 @@ jobs:
           - nightly
         target: 
           - interp
+          - js
           - node
           - neko
           - cs -D erase_generics
           - php
           - cpp
+          - lua
+          - python
+          - jvm
 
     steps:
     - name: Check out repo
