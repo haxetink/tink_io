@@ -29,8 +29,6 @@ jobs:
         exclude:
           - haxe-version: nightly
             target: jvm
-            
-    
 
     steps:
     - name: Check out repo

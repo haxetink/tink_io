@@ -6,8 +6,8 @@
   "contributors": [
     "back2dos"
   ],
-  "releasenote": "Add some Java impl & various fixes",
-  "version": "0.8.0",
+  "releasenote": "tink_core v2 compatibilities",
+  "version": "0.9.0",
   "dependencies": {
     "tink_chunk": "",
     "tink_streams" : ""
