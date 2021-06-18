@@ -127,7 +127,8 @@ class Splitter implements StreamParserObject<Chunk> {
         scanned = Chunk.EMPTY;
         Done(result);
       case None:
-        scanned &= cursor.sweepTo(cursor.length - delim.length); // move to end
+        // move cursor to end, but leave (delim.length-1) bytes because the perfect match could happen when combined with the very first byte of the next chunk
+        scanned &= cursor.sweepTo(cursor.length - delim.length + 1);
         Progressed;
     }
   }
