@@ -95,7 +95,7 @@ class SourceTest {
 		var split = s1.split('3');
 		split.before.all().handle(function(chunk) asserts.assert(chunk == '12'));
 		split.after.all().handle(function(chunk) asserts.assert(chunk == ''));
-		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == ''));
+		split.delimiter.handle(function(o) asserts.assert(o.orUse(Chunk.EMPTY) == '3'));
 		
 		var s1:IdealSource = '12131415';
 		var split = s1.split('1');
@@ -116,7 +116,7 @@ class SourceTest {
 	
 	public function parseStream() {
 		var s1:IdealSource = '01234';
-		var stream = s1.parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
+		var stream = s1.parseStream(new SimpleBytewiseParser(c -> Done(c), () -> Success(None)));
 		stream.collect().handle(function(o) switch o {
 			case Success(items):
 				asserts.assert(items.length == 5);
@@ -126,7 +126,7 @@ class SourceTest {
 		
 		var s1:IdealSource = '012';
 		var s2:IdealSource = '34';
-		var stream = s1.append(s2).parseStream(new SimpleBytewiseParser(function(c) return Done(c)));
+		var stream = s1.append(s2).parseStream(new SimpleBytewiseParser(c -> Done(c), () -> Success(None)));
 		stream.collect().handle(function(o) switch o {
 			case Success(items):
 				asserts.assert(items.length == 5);

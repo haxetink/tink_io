@@ -15,6 +15,7 @@ enum ParseStep<Result> {
 }
 
 enum ParseResult<Result, Quality> {
+  Finished:ParseResult<Result, Quality>;
   Parsed(data:Result, rest:Source<Quality>):ParseResult<Result, Quality>;
   Invalid(e:Error, rest:Source<Quality>):ParseResult<Result, Quality>;
   Broke(e:Error):ParseResult<Result, Error>;
@@ -70,14 +71,16 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
         Future.sync(Invalid(e, mk(rest)));
       case Failed(e):
         Future.sync(Broke(e));
-      case Depleted if(cursor.currentPos < cursor.length): 
-        Future.sync(Parsed(finish(), mk(Chunk.EMPTY)));
+      // case Depleted if(cursor.currentPos < cursor.length): 
+      //   Future.sync(Parsed(finish(), mk(Chunk.EMPTY)));
       case Depleted if(!resume):
         Future.sync(Parsed(finish(), flush()));
       case Depleted:
         switch p.eof(cursor) {
-          case Success(result):
+          case Success(Some(result)):
             consume(result).map(function (_) return Parsed(finish(), flush()));
+          case Success(None):
+            Future.sync(Finished);
           case Failure(e):
             Future.sync(Invalid(e, flush()));
         }     
@@ -98,6 +101,8 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
         step(End);
       else 
         parse(s, p).handle(function(o) switch o {
+          case Finished:
+            step(End);
           case Parsed(result, rest):
             s = rest;
             step(Link(result, Generator.stream(next)));
@@ -107,57 +112,57 @@ abstract StreamParser<Result>(StreamParserObject<Result>) from StreamParserObjec
   }
 }
 
-class Splitter extends BytewiseParser<Option<Chunk>> {
+class Splitter implements StreamParserObject<Chunk> {
   var delim:Chunk;
-  var buf = Chunk.EMPTY;
+  var scanned:Chunk = Chunk.EMPTY;
+  
   public function new(delim) {
     this.delim = delim;
   }
-  override function read(char:Int):ParseStep<Option<Chunk>> {
-    
-    if(char == -1) return Done(None);
-    
-    buf = buf & String.fromCharCode(char);
-    return if(buf.length >= delim.length) {
-      var bcursor = buf.cursor();
-      bcursor.moveBy(buf.length - delim.length);
-      var dcursor = delim.cursor();
-      
-      for(i in 0...delim.length) {
-        if(bcursor.currentByte != dcursor.currentByte) {
-          return Progressed;
-        }
-        else {
-          bcursor.next();
-          dcursor.next();
-        }
-      }
-      var out = Done(Some(buf.slice(0, bcursor.currentPos - delim.length)));
-      buf = Chunk.EMPTY;
-      return out;
-      
-    } else {
-      
-      Progressed;
-      
+  
+  public function progress(cursor:ChunkCursor) {
+    return switch cursor.seek(delim) {
+      case Some(chunk):
+        final result = scanned & chunk;
+        scanned = Chunk.EMPTY;
+        Done(result);
+      case None:
+        // move cursor to end, but leave (delim.length-1) bytes because the perfect match could happen when combined with the very first byte of the next chunk
+        scanned &= cursor.sweepTo(cursor.length - delim.length + 1);
+        Progressed;
     }
+  }
+  
+  public function eof(rest:ChunkCursor) {
+    return Success(rest.length == 0 ? None : Some(rest.seek(delim).or(() -> scanned & rest.right())));
   }
 }
 
 class SimpleBytewiseParser<Result> extends BytewiseParser<Result> {
   
   var _read:Int->ParseStep<Result>;
+  var _readEof:Void->Outcome<Option<Result>, Error>;
 
-  public function new(f)
-    this._read = f;
+  public function new(read, readEof) {
+    this._read = read;
+    this._readEof = readEof;
+    
+  }
 
   override public function read(char:Int)
     return _read(char); 
+
+  override function readEof():Outcome<Option<Result>, Error>
+    return _readEof();
 }
 
 class BytewiseParser<Result> implements StreamParserObject<Result> { 
 
   function read(char:Int):ParseStep<Result> {
+    return throw 'abstract';
+  }
+
+  function readEof():Outcome<Option<Result>, Error> {
     return throw 'abstract';
   }
   
@@ -176,16 +181,10 @@ class BytewiseParser<Result> implements StreamParserObject<Result> {
   }
   
   public function eof(rest:ChunkCursor) 
-    return switch read( -1) {
-      case Progressed: Failure(new Error(UnprocessableEntity, 'Unexpected end of input'));
-      case Done(r): Success(r);
-      case Failed(e): Failure(e);
-    }
-  
-  
+    return readEof();
 }
 
 interface StreamParserObject<Result> {
   function progress(cursor:ChunkCursor):ParseStep<Result>;
-  function eof(rest:ChunkCursor):Outcome<Result, Error>;
+  function eof(rest:ChunkCursor):Outcome<Option<Result>, Error>;
 }
