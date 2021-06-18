@@ -197,6 +197,7 @@ class RealSourceTools {
   static public function parse<R>(s:RealSource, p:StreamParser<R>):Promise<Pair<R, RealSource>>
     return StreamParser.parse(s, p).map(function (r) return switch r {
       case Parsed(data, rest): Success(new Pair(data, rest));
+      case Finished: Failure(new Error('No result'));
       case Invalid(e, _) | Broke(e): Failure(e);
     });
     
@@ -204,14 +205,8 @@ class RealSourceTools {
     var s = parse(src, new Splitter(delim));
     // TODO: make all these lazy
     return {
-      before: Stream #if cs .dirtyPromise #else .promise #end(s.next(function(p):SourceObject<Error> return switch p.a {
-        case Some(chunk): (chunk:RealSource);
-        case None: src;
-      })),
-      delimiter: s.next(function(p) return switch p.a {
-        case Some(_): delim;
-        case None: new Error(NotFound, 'Delimiter not found');
-      }),
+      before: Stream #if cs .dirtyPromise #else .promise #end(s.next(function(p):SourceObject<Error> return (p.a:RealSource))),
+      delimiter: s.swap(delim),
       after: Stream #if cs .dirtyPromise #else .promise #end(s.next(function(p):SourceObject<Error> return p.b)),
     }
   }
@@ -239,6 +234,7 @@ class IdealSourceTools {
   static public function parse<R>(s:IdealSource, p:StreamParser<R>):Promise<Pair<R, IdealSource>>
     return StreamParser.parse(s, p).map(function (r) return switch r {
       case Parsed(data, rest): Success(new Pair(data, rest));
+      case Finished: Failure(new Error('No result'));
       case Invalid(e, _): Failure(e);
     });
     
