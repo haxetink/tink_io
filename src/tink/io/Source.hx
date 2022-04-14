@@ -208,10 +208,10 @@ class RealSourceTools {
         case Some(chunk): (chunk:RealSource);
         case None: src;
       })),
-      delimiter: s.next(function(p) return switch p.a {
+      delimiter: s.next(function(p) return Promise.lift(switch p.a {
         case Some(_): delim;
         case None: new Error(NotFound, 'Delimiter not found');
-      }),
+      })),
       after: Stream #if cs .dirtyPromise #else .promise #end(s.next(function(p):SourceObject<Error> return p.b)),
     }
   }
