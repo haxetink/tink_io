@@ -15,6 +15,7 @@ using tink.io.Source;
 using tink.CoreApi;
 
 @:forward(reduce)
+@:using(tink.io.Source)
 abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to Stream<Chunk, E> from Stream<Chunk, E> { 
   
   public static var EMPTY(default, null):IdealSource = Empty.make();
