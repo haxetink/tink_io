@@ -138,7 +138,7 @@ source.pipeTo(sink).handle(function () {
 
 ### Performance
 
-The memory efficiency of `tink_io` strongly depends on the garbage collection of the host runtime environment. There are plans to allow for manual memory management at the cost of sacrificying immutability.
+The memory efficiency of `tink_io` strongly depends on the garbage collection of the host runtime environment. There are plans to allow for manual memory management at the cost of sacrificing immutability.
 
 Generally, a lot of benchmarking is to be done to further optimize `tink_io` but superficial tests on nodejs appear quite promising. Copying a 379MB tar file (containing the wonderful game Master of Orion 2) a 100 times by piping yields these results:
   
