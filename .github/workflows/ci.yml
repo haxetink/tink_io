@@ -39,7 +39,7 @@ jobs:
       run: echo "::set-output name=dir::$(yarn cache dir)"
 
     - name: Cache Yarn
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -47,7 +47,7 @@ jobs:
           ${{ runner.os }}-yarn-
         
     - name: Cache Haxe
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/haxe
         key: haxe
