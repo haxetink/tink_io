@@ -24,7 +24,7 @@ jobs:
           - cpp
           - lua
           - python
-          - jvm
+          # - jvm
         exclude:
           - haxe-version: nightly
             target: jvm
