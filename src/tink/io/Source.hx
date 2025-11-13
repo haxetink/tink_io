@@ -102,7 +102,7 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return this;
   
   static public function concatAll<E>(s:Stream<Chunk, E>)
-    return s.reduce(Chunk.EMPTY, function (res:Chunk, cur:Chunk) return Progress(res & cur));
+    return s.reduce(Chunk.EMPTY, function (res:Chunk, cur:Chunk) return ReductionStep.Progress(res & cur));
 
   public function pipeTo<EOut, Result>(target:SinkYielding<EOut, Result>, ?options):Future<PipeResult<E, EOut, Result>> 
     return target.consume(this, options);
