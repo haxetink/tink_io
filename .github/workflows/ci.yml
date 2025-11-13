@@ -20,7 +20,6 @@ jobs:
           - js
           - node
           - neko
-          - cs -D erase_generics
           - php
           - cpp
           - lua

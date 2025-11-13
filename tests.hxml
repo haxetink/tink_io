@@ -2,4 +2,6 @@
 -main RunTests
 -dce full
 
+-D eval-call-stack-depth=10000
+
 -lib tink_unittest
