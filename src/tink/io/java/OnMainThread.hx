@@ -9,7 +9,7 @@ class OnMainThread {
 		#if tink_runloop
 		tink.RunLoop.current.work(fn);
 		#elseif java
-		haxe.EntryPoint.runInMainThread(fn);
+		haxe.MainLoop.add(fn);
 		#else
 		fn();
 		#end

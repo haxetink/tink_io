@@ -11,7 +11,7 @@ class RunTests {
     // (e.g. an AsynchronousSocketChannel/AsynchronousFileChannel completion)
     // can trigger its static init and wrongly capture a pool thread as
     // "main" (which has no event loop, causing "Event loop is not available").
-    haxe.EntryPoint.runInMainThread(function() {});
+    haxe.MainLoop.add(function() {});
     #end
 
     Runner.run(TestBatch.make([

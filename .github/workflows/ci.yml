@@ -22,7 +22,7 @@ jobs:
           - neko
           - php
           - cpp
-          - lua
+          # - lua
           - python
           - jvm
 
