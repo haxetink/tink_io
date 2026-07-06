@@ -44,22 +44,26 @@ private class ReadHandler implements CompletionHandler<Integer, ByteBuffer>  {
 	}
 	
 	public function completed(result:Integer, buffer:ByteBuffer) {
-		cb.invoke(
-			if(result == -1)
-				End
-			else if(result == 0) {
-				Link(Chunk.EMPTY, new JavaFileSource(parent.name, parent.channel, parent.pos, parent.size));
-			} else {
-				var len = result.toInt();
-				var data = buffer.array();
-				var chunk:Chunk = Bytes.ofData(data);
-				var start = buffer.arrayOffset();
-				Link(chunk.slice(start, start + len), new JavaFileSource(parent.name, parent.channel, parent.pos + len, parent.size));
-			}
-		);
+		OnMainThread.run(function() {
+			cb.invoke(
+				if(result == -1)
+					End
+				else if(result == 0) {
+					Link(Chunk.EMPTY, new JavaFileSource(parent.name, parent.channel, parent.pos, parent.size));
+				} else {
+					var len = result.toInt();
+					var data = buffer.array();
+					var chunk:Chunk = Bytes.ofData(data);
+					var start = buffer.arrayOffset();
+					Link(chunk.slice(start, start + len), new JavaFileSource(parent.name, parent.channel, parent.pos + len, parent.size));
+				}
+			);
+		});
 	}
 	
 	public function failed(exc:Throwable, attachment:ByteBuffer) {
-		cb.invoke(Fail(Error.withData('Read failed for "${parent.name}", reason: ' + exc.getMessage(), exc)));
+		OnMainThread.run(function() {
+			cb.invoke(Fail(Error.withData('Read failed for "${parent.name}", reason: ' + exc.getMessage(), exc)));
+		});
 	}
 }

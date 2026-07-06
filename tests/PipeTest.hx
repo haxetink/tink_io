@@ -63,12 +63,13 @@ class PipeTest {
           { chunkSize: chunkSize }
         );
     #elseif java
-      var path = java.nio.file.Paths.get(name, new java.NativeArray(0));
-      var op:java.NativeArray<java.nio.file.OpenOption> = java.NativeArray.make(cast java.nio.file.StandardOpenOption.READ);
+      var path = java.nio.file.Paths.get(name);
+      var op:java.nio.file.OpenOption = cast java.nio.file.StandardOpenOption.READ;
+      var channel = java.nio.channels.AsynchronousFileChannel.open(path, op);
       return
         Source.ofJavaFileChannel(
           'Input from file $name',
-          java.nio.channels.AsynchronousFileChannel.open(path, op),
+          channel,
           { chunkSize: chunkSize }
         );
     #elseif sys
@@ -96,10 +97,12 @@ class PipeTest {
           cs.system.io.FileShare.ReadWrite
       ));
     #elseif java
-      var path = java.nio.file.Paths.get(name, new java.NativeArray(0));
-      var op:java.NativeArray<java.nio.file.OpenOption> = java.NativeArray.make(cast java.nio.file.StandardOpenOption.CREATE, cast java.nio.file.StandardOpenOption.WRITE);
+      var path = java.nio.file.Paths.get(name);
+      var create:java.nio.file.OpenOption = cast java.nio.file.StandardOpenOption.CREATE;
+      var write:java.nio.file.OpenOption = cast java.nio.file.StandardOpenOption.WRITE;
+      var channel = java.nio.channels.AsynchronousFileChannel.open(path, create, write);
       return
-        Sink.ofJavaFileChannel('Output to file $name', java.nio.channels.AsynchronousFileChannel.open(path, op));
+        Sink.ofJavaFileChannel('Output to file $name', channel);
     #elseif sys
       return
         Sink.ofOutput('Output to file $name', sys.io.File.write(name, true));
