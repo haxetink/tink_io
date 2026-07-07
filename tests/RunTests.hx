@@ -16,6 +16,7 @@ class RunTests {
 
     Runner.run(TestBatch.make([
       #if (sys || nodejs) new PipeTest(),#end
+      #if (sys && target.threaded) new SocketTest(),#end
       new SourceTest(),
       new ParserTest(),
       new CastTest(),
