@@ -3,5 +3,6 @@
 -dce full
 
 -D eval-call-stack-depth=10000
+-D test
 
 -lib tink_unittest

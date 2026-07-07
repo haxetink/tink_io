@@ -37,6 +37,21 @@ abstract SelectPool(SelectPoolObject) from SelectPoolObject to SelectPoolObject 
   public function close():Void
     this.close();
 
+  #if test
+  /**
+   * Test-only introspection into how often this pool actually fell back to
+   * `Socket.select()`, as opposed to resolving I/O eagerly.
+   */
+  public function waitReadableCount():Int
+    return this.waitReadableCount();
+
+  public function waitWritableCount():Int
+    return this.waitWritableCount();
+
+  public function selectCallCount():Int
+    return this.selectCallCount();
+  #end
+
   static public function create(?name:String, ?worker:Worker):SelectPool
     return (new SelectPoolImpl(name, worker) : SelectPoolObject);
 }
@@ -45,6 +60,11 @@ interface SelectPoolObject {
   function register(socket:Socket):Void;
   function wait(socket:Socket, read:Bool):Future<Noise>;
   function close():Void;
+  #if test
+  function waitReadableCount():Int;
+  function waitWritableCount():Int;
+  function selectCallCount():Int;
+  #end
 }
 
 private class SelectPoolImpl implements SelectPoolObject {
@@ -62,6 +82,12 @@ private class SelectPoolImpl implements SelectPoolObject {
 
   var started = false;
   var shutdown = false;
+
+  #if test
+  var _waitReadableCount = 0;
+  var _waitWritableCount = 0;
+  var _selectCallCount = 0;
+  #end
 
   public function new(?name, ?worker) {
     this.name = name == null ? 'SelectPool' : name;
@@ -97,6 +123,9 @@ private class SelectPoolImpl implements SelectPoolObject {
         waiters.set(socket, list);
       }
       list.push(cb);
+      #if test
+      if (read) _waitReadableCount++; else _waitWritableCount++;
+      #end
       mutex.release();
 
       lock.release();
@@ -107,6 +136,17 @@ private class SelectPoolImpl implements SelectPoolObject {
     shutdown = true;
     lock.release();
   }
+
+  #if test
+  public function waitReadableCount():Int
+    return _waitReadableCount;
+
+  public function waitWritableCount():Int
+    return _waitWritableCount;
+
+  public function selectCallCount():Int
+    return _selectCallCount;
+  #end
 
   function ensureStarted():Void {
     if (started) return;
@@ -149,6 +189,10 @@ private class SelectPoolImpl implements SelectPoolObject {
         lock.wait(0.2);
         continue;
       }
+
+      #if test
+      _selectCallCount++;
+      #end
 
       var result =
         try Socket.select(readArr, writeArr, otherArr, 0.1)
