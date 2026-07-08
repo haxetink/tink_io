@@ -3,3 +3,4 @@
 
 -lib tink_chunk
 -lib tink_streams
+extraParams.hxml

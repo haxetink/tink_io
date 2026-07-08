@@ -46,7 +46,11 @@ class JavaSocketSink extends SinkBase<Error, Noise> {
 		});
 			
 		if (options.end)
-			ret.handle(function (end) channel.shutdownOutput());
+			ret.handle(function (end) {
+				try channel.shutdownOutput()
+				catch (e:java.nio.channels.ClosedChannelException) {}
+				catch (e:java.io.IOException) {}
+			});
 			
 		return ret.map(function (c) return c.toResult(Noise));
 	}
