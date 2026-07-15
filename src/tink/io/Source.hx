@@ -70,8 +70,11 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     return tink.io.js.BlobSource.wrap(name, blob, chunkSize);
   }
 
+  #if !nodejs
   @:noUsing static public inline function ofReadableStream(name:String, stream:tink.io.js.ReadableStream):RealSource
     return tink.io.js.ReadableStreamSource.wrap(name, stream);
+  #end
+  
   #end
   
   #if cs

@@ -27,8 +27,7 @@ class ReadableStreamSource extends Generator<Chunk, Error> {
           if (result.done || result.value == null)
             cb(End);
           else {
-            final chunk:Chunk = result.value;
-            cb(Link(chunk, new ReadableStreamSource(name, reader)));
+            cb(Link((result.value : Chunk), new ReadableStreamSource(name, reader)));
           }
         },
         function(e) cb(Fail(Error.withData('Error reading from $name', e)))
