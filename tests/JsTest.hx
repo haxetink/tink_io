@@ -39,4 +39,21 @@ class JsTest {
 			.handle(asserts.handle);
 		return asserts;
 	}
+
+	public function readableStream() {
+		final stream:tink.io.js.ReadableStream = js.Syntax.code('new ReadableStream({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("ti"));
+				controller.enqueue(new TextEncoder().encode("nk"));
+				controller.close();
+			}
+		})');
+		Source.ofReadableStream('ReadableStream', stream).all()
+			.next(function(chunk) {
+				asserts.assert(chunk.toString() == 'tink');
+				return Noise;
+			})
+			.handle(asserts.handle);
+		return asserts;
+	}
 }

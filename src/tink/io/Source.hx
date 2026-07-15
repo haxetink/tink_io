@@ -69,6 +69,9 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
     var chunkSize = options == null || options.chunkSize == null ? 1 << 24 : options.chunkSize;
     return tink.io.js.BlobSource.wrap(name, blob, chunkSize);
   }
+
+  @:noUsing static public inline function ofReadableStream(name:String, stream:tink.io.js.ReadableStream):RealSource
+    return tink.io.js.ReadableStreamSource.wrap(name, stream);
   #end
   
   #if cs
