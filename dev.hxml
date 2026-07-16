@@ -1,5 +1,8 @@
 tests.hxml 
 -lib travix 
 -lib tink_io 
--lib hxnodejs 
--js bin/node/tests.js
+
+-neko bin/neko/tests.n
+
+# -lib hxnodejs 
+# -js bin/node/tests.js

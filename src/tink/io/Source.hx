@@ -103,6 +103,17 @@ abstract Source<E>(SourceObject<E>) from SourceObject<E> to SourceObject<E> to S
       case v: v;
     }), 0);
   }
+
+  #if (sys && target.threaded)
+  @:noUsing static public inline function ofSocket(name:String, socket:sys.net.Socket, pool:tink.io.std.SelectPool, ?options:{ ?chunkSize: Int, ?worker:Worker }):RealSource {
+    if (options == null)
+      options = {};
+    return tink.io.std.SocketSource.wrap(name, socket, pool, options.worker.ensure(), switch options.chunkSize {
+      case null: 0x10000;
+      case v: v;
+    });
+  }
+  #end
   
   public function chunked():Stream<Chunk, E>
     return this;

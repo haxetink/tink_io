@@ -61,6 +61,13 @@ abstract SinkYielding<FailingWith, Result>(SinkObject<FailingWith, Result>)
       case { worker: w }: w;
     });
 
+  #if (sys && target.threaded)
+  static public function ofSocket(name:String, socket:sys.net.Socket, pool:tink.io.std.SelectPool, ?options:{ ?worker:Worker }):RealSink
+    return tink.io.std.SocketSink.wrap(name, socket, pool, switch options {
+      case null | { worker: null }: Worker.get();
+      case { worker: w }: w;
+    });
+  #end
 
 }
 
