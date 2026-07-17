@@ -9,6 +9,7 @@
   "releasenote": "tink_core v2 compatibilities",
   "version": "0.9.0",
   "dependencies": {
+    "tink_syntaxhub": "",
     "tink_chunk": "",
     "tink_streams" : ""
   }
