@@ -1,16 +1,14 @@
 {
-  "name": "tink_io",
-  "license": "MIT",
-  "tags": [],
-  "classPath": "src",
-  "contributors": [
-    "back2dos"
-  ],
-  "releasenote": "tink_core v2 compatibilities",
-  "version": "0.9.0",
-  "dependencies": {
-    "tink_syntaxhub": "",
-    "tink_chunk": "",
-    "tink_streams" : ""
-  }
+	"name": "tink_io",
+	"license": "MIT",
+	"tags": [],
+	"classPath": "src",
+	"contributors": ["back2dos"],
+	"releasenote": "tink_core v2 compatibilities",
+	"version": "0.9.0",
+	"dependencies": {
+		"haxe12985": "",
+		"tink_chunk": "",
+		"tink_streams": ""
+	}
 }
