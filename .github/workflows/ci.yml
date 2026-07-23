@@ -24,7 +24,7 @@ jobs:
           - cpp
           # - lua
           - python
-          - jvm
+          - jvm -lib haxe12985
 
     steps:
       - name: Check out repo
