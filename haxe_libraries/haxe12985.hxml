@@ -1,5 +1,5 @@
-# @install: lix --silent download "gh://github.com/kevinresol/haxe12985#5f4f43e523ec9e9f8058520dd2a667f84d6655bd" into haxe12985/1.0.0/github/5f4f43e523ec9e9f8058520dd2a667f84d6655bd
+# @install: lix --silent download "gh://github.com/kevinresol/haxe12985#5338caa2a3576523a39c1c78b9ebab1c0c59de74" into haxe12985/1.0.0/github/5338caa2a3576523a39c1c78b9ebab1c0c59de74
 -lib tink_syntaxhub
--cp ${HAXE_LIBCACHE}/haxe12985/1.0.0/github/5f4f43e523ec9e9f8058520dd2a667f84d6655bd/src
+-cp ${HAXE_LIBCACHE}/haxe12985/1.0.0/github/5338caa2a3576523a39c1c78b9ebab1c0c59de74/src
 -D haxe12985=1.0.0
 --macro haxe.issue12985.Patch.patch()
